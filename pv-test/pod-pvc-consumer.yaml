@@ -1,0 +1,31 @@
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: localpv-pod
+spec:
+  containers:
+    - name: localpv-po-container
+      image: nginx
+      ports: 
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts: 
+        - mountPath: "/usr/share/nginx/html"
+          # name必须与下方的volumes.name一致
+          name: pvc3
+        - mountPath: "/temp3"
+          # name必须与下方的volumes.name一致
+          name: pvc2
+  volumes:
+    - name: pvc3
+      persistentVolumeClaim:
+        # 此pvc是动态绑定（或动态制备，本例使用的local pv不能动态制备，只能预制备，动态绑定）, 
+        # pod首次启动之前，pvc的状态应该是 Pending, 对应的pv的CLAIM属性为空,
+        # pod首次启动之后，或者被删除, pvc的状态应该是 Bound 对应的pv的CLAIM属性为pvc的名称,
+        claimName: pvc3-with-class
+    - name: pvc2
+      persistentVolumeClaim:
+        # 此pvc是手工绑定, 
+        # pod启动前后，pvc的状态应该都是 Bound, 对应的pv的CLAIM属性为pvc的名称,
+        claimName: pvc2-without-class

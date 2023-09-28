@@ -1,0 +1,102 @@
+# 将内存挂在到磁盘模拟磁盘
+# $mkdir /mnt/ram-disks
+# $for vol in vol1 vol2 vol3; do mkdir /mnt/ram-disks/$vol; mount -t tmpfs $vol /mnt/ram-disks/$vol; done
+# 给node打标签，创建local pv亲和性需要匹配: kubectl label node lpschn22l0317 localpv=true
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ram-pv01
+spec:
+  capacity:
+    storage: 4Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  # storageClassName与标签类似，用于将pv和pvc自动绑定匹配，与标签不同的是可以通过kind: StorageClass配置绑定需要的属性,此属性用于标识pv是哪个storageClass制备的，手动制备的无须此项配置
+  # storageClassName: name-of-storage-class
+  local: 
+    path: /mnt/ram-disks/vol1
+  # 对于local类型的pv必须设置亲和性,标签需要提前给node打上
+  nodeAffinity: 
+    required: 
+      nodeSelectorTerms: 
+        - matchExpressions: 
+          - key: localpv
+            operator: In
+            values: 
+            - "true"
+
+---
+# StorageClass的作用主要是动态创建pv，当pvc请求一个StorageClass的pv时会匹配一个合适的pv，如果没有则会创建一个pv
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: name-of-storage-class
+# 参数 provisioner决定动态创建pv时，pv的类型，如local、hostpath、CephFS、NFS 等
+provisioner: kubernetes.io/no-provisioner
+# 绑定模式配置为pod消费pvc才会绑定到pv到pvc，
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# 自动制备pv
+# pvc主要的目的是动态制备是给StorageClass传递参数， 如果卷是动态制备的，那么删除pvc时会同时删除pv。
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: name-of-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Mi
+  storageClassName: name-of-storage-class
+
+---
+# 手动绑定pv
+# pvc主要的目的是动态制备是给StorageClass传递参数， 如果卷是动态制备的，那么删除pvc时会同时删除pv。
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: name-of-pvc2
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Mi
+  # storageClassName设置为空，禁止动态制备, 必须显示设置为空字符， 不设置则会设为默认的storageClass
+  storageClassName: ""
+  # 指定pv
+  volumeName: ram-pv01
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: localpv-pod
+spec:
+  containers:
+    - name: localpv-po-container
+      image: nginx
+      ports: 
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts: 
+        - mountPath: "/usr/share/nginx/html"
+          # name必须与下方的volumes.name一致
+          name: name-of-pod-volumes
+  volumes:
+    - name: name-of-pod-volumes
+      persistentVolumeClaim:
+        # claimName需要与PersistentVolumeClaim的name属性一致
+        claimName: name-of-pvc
+# 创建pod后
+# $ kubectl  exec -it  localpv-pod  -- /bin/bash
+# $ cd /usr/share/nginx/html/
+# $ touch test.html
+# $ ls
+
+# 查看node节点挂在目录上的内容 $ ls /mnt/disks/vol1/ 确认文件存在
+# 删除pod,pvc,pv: kubectl delete -f pv-local-vo1.yaml，检查node主机上的文件/mnt/disks/vol1/test.html依然存在 

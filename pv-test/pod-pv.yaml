@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv02-without-class
+spec:
+  capacity:
+    storage: 4Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  local: 
+    path: /mnt/ram-disks/vol2
+  # 对于local类型的pv必须设置亲和性,标签需要提前给node打上
+  nodeAffinity: 
+    required: 
+      nodeSelectorTerms: 
+        - matchExpressions: 
+          - key: localpv
+            operator: In
+            values: 
+            - "true"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv03-with-class
+spec:
+  capacity:
+    storage: 4Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  # storageClassName与标签类似，用于将pv和pvc自动绑定匹配，与标签不同的是可以通过kind: StorageClass配置绑定需要的属性,此属性用于标识pv是哪个storageClass制备的，手动制备的无须此项配置
+  storageClassName: name-of-storage-class3
+  local: 
+    path: /mnt/ram-disks/vol3
+  # 对于local类型的pv必须设置亲和性,标签需要提前给node打上
+  nodeAffinity: 
+    required: 
+      nodeSelectorTerms: 
+        - matchExpressions: 
+          - key: localpv
+            operator: In
+            values: 
+            - "true"
+
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: name-of-storage-class3
+# 参数 provisioner决定动态创建pv时，pv的类型，如local、hostpath、CephFS、NFS 等
+provisioner: kubernetes.io/no-provisioner
+# 绑定模式配置为pod消费pvc才会绑定到pv到pvc，
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# 没class, 手工绑定，创建后状态为Bound , 对应的pv的CLAIM属性为pvc的名称
+# pvc被删除pv状态变为 fail，不能再使用。
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc2-without-class
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Mi
+  # storageClassName设置为空，禁止动态制备
+  storageClassName: ""
+  # 指定pv
+  volumeName: pv02-without-class
+
+---
+# 有class, 动态绑定（或动态制备，本例使用的local pv不能动态制备，只能预制备，动态绑定）, 
+# pvc的状态应该是 Pending, 对应的pv的CLAIM属性为空, 直到第一次被pod请求状态变为Bound，pod被删除状态不会再变化
+# pvc被绑定后删除，pv状态变为fail，被绑定前删除无影响
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc3-with-class
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Mi
+  storageClassName: name-of-storage-class3
