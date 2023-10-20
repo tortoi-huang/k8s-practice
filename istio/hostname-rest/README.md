@@ -18,7 +18,17 @@ helm install istio-base istio/base -n istio-system --set defaultRevision=default
 helm install istiod istio/istiod -n istio-system --wait
 ```
 
-2. 安装网关， 网关安装的命名空间为 istio-system, 如果命名空间不是这个要修改 [路由配置文件 k8s-gateway.yaml](k8s-gateway.yaml)上引用的命名空间
+2. 安装第三方组件，方便观察istio网络信息，包括 grafana, tracing, prometheus, kiali
+从git上下载配置，并运行
+```shell
+git clone https://github.com/istio/istio.git
+# 切换到当前安装istio版本
+# git checkout -b release-1.19 origin/release-1.19
+kubectl apply -f istio/samples/addons/ -n istio-system
+# kubectl delete -f istio/samples/addons/ -n istio-system
+```
+
+3. 安装网关， 网关安装的命名空间为 istio-system, 如果命名空间不是这个要修改 [路由配置文件 k8s-gateway.yaml](k8s-gateway.yaml)上引用的命名空间
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: Gateway
@@ -38,7 +48,11 @@ spec:
         # 允许跨命名空间
         from: All
 ```
-3. 创建一个命名空间 tutorial
+3. 创建一个命名空间 tutorial, 并标记为istio自动注入
+```shell
+kubectl create namespace tutorial
+kubectl leble namespace tutorial istio-injection=enabled
+```
 
 ## 构建测试用的 docker镜像
 ```shell
