@@ -1,0 +1,63 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: hostname-vs
+spec:
+  hosts:
+  # 这里意思是匹配 k8s 的service anotherservice， 官网说可用* 来匹配所有的服务, 实测不行
+  - anotherservice
+  http:
+  - match:
+    # 匹配 header 
+    - headers:
+        end-user:
+          # exact 表示等于，也可以是前缀、后缀或正则表达式
+          exact: jason
+    route:
+    - destination:
+        # 这里必须是一个有效的被istio管理的k8s服务名称或者istio的service entry， 比如在其他命名空间不为istio管理的服务不能用
+        host: anotherservice
+        # 这里需要定义一个目标规则(DestinationRule) 来指定 v3是路由到哪里， 
+        subset: v3
+  # 匹配 uri 前缀， 还可以匹配正则表达式，查询字符串等，这里不一一测试
+  # - match:
+  #   - uri:
+  #       prefix: /v2
+  #   route:
+  #   - destination:
+  #       host: anotherservice
+  #       subset: v2
+  
+  # 默认路由规则，都匹配不上走这里
+  - route:
+    - destination:
+        host: anotherservice
+        subset: all
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: my-destination-rule
+spec:
+  # 目标服务收istio管控的k8s service
+  host: anotherservice
+  # 默认均衡算法改为随机， 如果不指定则是轮询， 这里是对host对应的service的pod负载均衡，不是对下方的 subsets负载均衡
+  trafficPolicy:
+    loadBalancer:
+      simple: RANDOM
+  # 感觉 subsets 是定义给VirtualService用的，DestinationRule并不需要它
+  subsets:
+  # 这个name 给VirtualService引用
+  - name: v3
+    # 这个label用来查找spec.host 指定服务的pod
+    labels:
+      version: v3
+  - name: v2
+    labels:
+      version: v2
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+  - name: all
+    labels:
+      app: py-hostname-app

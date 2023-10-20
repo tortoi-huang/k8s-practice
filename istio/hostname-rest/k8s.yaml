@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: anotherservice
+  labels:
+    app: py-hostname-svc
+    service: anotherservice
+spec:
+  ports:
+  - port: 80
+    name: http
+  selector:
+    app: py-hostname-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-hostname-deploy-v1
+  labels:
+    app: py-hostname-deploy-v1
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: py-hostname-app
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: py-hostname-app
+        version: v1
+    spec:
+      containers:
+      - name: py-hostname-app
+        image: hostname-rest-svc:0.0.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env: 
+          - name: my_version
+            valueFrom: 
+              fieldRef: 
+                fieldPath: metadata.labels['version']
+          - name: my_err_rate
+            value: "50_30_20"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-hostname-deploy-v2
+  labels:
+    app: py-hostname-deploy-v2
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: py-hostname-app
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: py-hostname-app
+        version: v2
+    spec:
+      containers:
+      - name: py-hostname-app
+        image: hostname-rest-svc:0.0.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env: 
+          - name: my_version
+            valueFrom: 
+              fieldRef: 
+                fieldPath: metadata.labels['version']
+          - name: my_err_rate
+            value: "80_20"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-hostname-deploy-v3
+  labels:
+    app: py-hostname-deploy-v3
+    version: v3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: py-hostname-app
+      version: v3
+  template:
+    metadata:
+      labels:
+        app: py-hostname-app
+        version: v3
+    spec:
+      containers:
+      - name: py-hostname-app
+        image: hostname-rest-svc:0.0.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        env: 
+          - name: my_version
+            valueFrom: 
+              fieldRef: 
+                fieldPath: metadata.labels['version']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: py-proxy-svc
+  labels:
+    app: py-proxy-svc
+    service: py-proxy-svc
+spec:
+  ports:
+  - port: 80
+    name: http
+  selector:
+    app: py-proxy-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-proxy-deploy
+  labels:
+    app: py-proxy-deploy
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: py-proxy-app
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: py-proxy-app
+        version: v1
+    spec:
+      containers:
+      - name: py-proxy-app
+        image: hostname-rest-proxy:0.0.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80

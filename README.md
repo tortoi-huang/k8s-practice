@@ -1,2 +1,2 @@
 # k8s-practice
-测试挂载
+kubernetes相关技术测试
