@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-html1
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>Welcome to nginx!</title>
+    </head>
+    <body>
+    <h1>Welcome to my nginx 1!</h1>
+    <p>If you see this page, the nginx web server is successfully installed and
+    working. Further configuration is required.</p>
+
+    <p>hello nginx app 1</p>
+
+    <p><em>Thank you for using nginx.</em></p>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-html2
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>Welcome to nginx!</title>
+    </head>
+    <body>
+    <h1>Welcome to my nginx 2!</h1>
+    <p>If you see this page, the nginx web server is successfully installed and
+    working. Further configuration is required.</p>
+
+    <p>hello nginx app 2</p>
+
+    <p><em>Thank you for using nginx.</em></p>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-cfg
+data:
+  default.conf.template: |
+    server {
+        listen       ${NGINX_PORT};
+        server_name  localhost;
+
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: muti-container
+  labels:
+    app: muti-container
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: muti-container-nginx
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: muti-container-nginx
+        version: v1
+    spec:
+      containers:
+      - name: muti-container-nginx-c1
+        image: nginx:1.24.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MY_APP_NAME
+          value: APP1
+        - name: NGINX_PORT
+          value: "8080"
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: html1
+        - mountPath: /etc/nginx/templates
+          name: vol-nginx-cfg
+
+      - name: muti-container-nginx-c2
+        image: nginx:1.24.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MY_APP_NAME
+          value: APP2
+        - name: NGINX_PORT
+          value: "8090"
+        ports:
+        - containerPort: 8090
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: html2
+        - mountPath: /etc/nginx/templates
+          name: vol-nginx-cfg
+
+      # - name: muti-container-busybox
+      #   image: busybox
+      #   imagePullPolicy: IfNotPresent
+      #   command: ['sleep', '1d']
+      #   env:
+      #   - name: MY_APP_NAME
+      #     value: APP3
+      volumes:
+        - name: html1
+          configMap:
+            name: hello-html1
+        - name: html2
+          configMap:
+            name: hello-html2
+        - name: vol-nginx-cfg
+          configMap:
+            name: nginx-cfg
