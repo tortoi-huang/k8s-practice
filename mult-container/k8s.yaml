@@ -98,6 +98,14 @@ spec:
           name: html1
         - mountPath: /etc/nginx/templates
           name: vol-nginx-cfg
+        resources:
+          limits: 
+            # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
+            cpu: "0.5"
+            memory: "200m"
+          requests:
+            cpu: "0.1"
+            memory: "50m"
 
       - name: muti-container-nginx-c2
         image: nginx:1.24.0
@@ -114,14 +122,15 @@ spec:
           name: html2
         - mountPath: /etc/nginx/templates
           name: vol-nginx-cfg
+        resources:
+          limits: 
+            # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
+            cpu: "0.5"
+            memory: "200m"
+          requests:
+            cpu: "0.1"
+            memory: "50m"
 
-      # - name: muti-container-busybox
-      #   image: busybox
-      #   imagePullPolicy: IfNotPresent
-      #   command: ['sleep', '1d']
-      #   env:
-      #   - name: MY_APP_NAME
-      #     value: APP3
       volumes:
         - name: html1
           configMap:

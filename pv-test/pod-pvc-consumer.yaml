@@ -17,6 +17,14 @@ spec:
         - mountPath: "/temp3"
           # name必须与下方的volumes.name一致
           name: pvc2
+      resources:
+        limits: 
+          # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
+          cpu: "0.5"
+          memory: "200m"
+        requests:
+          cpu: "0.1"
+          memory: "50m"
   volumes:
     - name: pvc3
       persistentVolumeClaim:
