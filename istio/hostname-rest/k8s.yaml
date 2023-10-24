@@ -44,6 +44,14 @@ spec:
                 fieldPath: metadata.labels['version']
           - name: my_err_rate
             value: "50_30_20"
+        resources:
+          limits: 
+            # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
+            cpu: "0.5"
+            memory: "200M"
+          requests:
+            cpu: "0.1"
+            memory: "50M"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -81,10 +89,10 @@ spec:
           limits: 
             # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
             cpu: "0.5"
-            memory: "200m"
+            memory: "200M"
           requests:
             cpu: "0.1"
-            memory: "50m"
+            memory: "50M"
 
 ---
 apiVersion: apps/v1
@@ -121,10 +129,10 @@ spec:
           limits: 
             # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
             cpu: "0.5"
-            memory: "200m"
+            memory: "200M"
           requests:
             cpu: "0.1"
-            memory: "50m"
+            memory: "50M"
 ---
 apiVersion: v1
 kind: Service
@@ -169,7 +177,7 @@ spec:
           limits: 
             # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
             cpu: "0.5"
-            memory: "200m"
+            memory: "200M"
           requests:
             cpu: "0.1"
-            memory: "50m"
+            memory: "50M"

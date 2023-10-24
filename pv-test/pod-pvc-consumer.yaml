@@ -21,10 +21,10 @@ spec:
         limits: 
           # cpu 单位是 100 millicpu(一百毫核?), 0.5就是50millicpu
           cpu: "0.5"
-          memory: "200m"
+          memory: "200M"
         requests:
           cpu: "0.1"
-          memory: "50m"
+          memory: "50M"
   volumes:
     - name: pvc3
       persistentVolumeClaim:
