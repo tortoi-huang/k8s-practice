@@ -16,6 +16,11 @@ helm install istio-base istio/base -n istio-system --set defaultRevision=default
 
 # 也可以不用 wait， 手工检查是否安装的组件都运行成功
 helm install istiod istio/istiod -n istio-system --wait
+
+# 查看已安装的helm程序
+helm ls -n istio-system
+# helm uninstall istiod -n istio-system
+# helm uninstall istio-base -n istio-system
 ```
 
 2. 安装第三方组件，方便观察istio网络信息，包括 grafana, tracing, prometheus, kiali
