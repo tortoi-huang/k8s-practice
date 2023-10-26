@@ -1,0 +1,210 @@
+---
+# Source: tdengine/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tdtest-tdengine-taoscfg
+  labels:
+    helm.sh/chart: tdengine-3.0.2
+    app.kubernetes.io/name: tdengine
+    app.kubernetes.io/instance: tdtest
+    app.kubernetes.io/version: "3.0.2.2"
+    app.kubernetes.io/managed-by: Helm
+data:
+  CLUSTER: "1"
+  TAOS_REPLICA: "1"
+---
+# Source: tdengine/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tdtest-tdengine
+  labels:
+    helm.sh/chart: tdengine-3.0.2
+    app.kubernetes.io/name: tdengine
+    app.kubernetes.io/instance: tdtest
+    app.kubernetes.io/version: "3.0.2.2"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports: 
+    - name: tcp0
+      port: 6030
+      protocol: TCP
+    - name: tcp1
+      port: 6041
+      protocol: TCP
+    - name: tcp2
+      port: 6042
+      protocol: TCP
+    - name: tcp3
+      port: 6043
+      protocol: TCP
+    - name: tcp4
+      port: 6044
+      protocol: TCP
+    - name: tcp5
+      port: 6046
+      protocol: TCP
+    - name: tcp6
+      port: 6047
+      protocol: TCP
+    - name: tcp7
+      port: 6048
+      protocol: TCP
+    - name: tcp8
+      port: 6049
+      protocol: TCP
+    - name: tcp9
+      port: 6060
+      protocol: TCP
+    
+    - name: udp0
+      port: 6044
+      protocol: UDP
+    - name: udp1
+      port: 6045
+      protocol: UDP
+  selector:
+    app.kubernetes.io/name: tdengine
+    app.kubernetes.io/instance: tdtest
+    app: "taosd"
+---
+# Source: tdengine/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tdtest-tdengine
+  labels:
+    helm.sh/chart: tdengine-3.0.2
+    app.kubernetes.io/name: tdengine
+    app.kubernetes.io/instance: tdtest
+    app.kubernetes.io/version: "3.0.2.2"
+    app.kubernetes.io/managed-by: Helm
+    app: taosd
+spec:
+  serviceName: tdtest-tdengine
+  replicas: 1
+  # podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tdengine
+      app.kubernetes.io/instance: tdtest
+      app: taosd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tdengine
+        app.kubernetes.io/instance: tdtest
+        app: taosd
+    spec:
+      containers:
+        - name: tdengine
+          image: "tdengine/tdengine:3.0.2.2"
+          imagePullPolicy: "IfNotPresent"
+          ports: 
+          - name: tcp0
+            containerPort: 6030
+            protocol: TCP
+          - name: tcp1
+            containerPort: 6041
+            protocol: TCP
+          - name: tcp2
+            containerPort: 6042
+            protocol: TCP
+          - name: tcp3
+            containerPort: 6043
+            protocol: TCP
+          - name: tcp4
+            containerPort: 6044
+            protocol: TCP
+          - name: tcp5
+            containerPort: 6046
+            protocol: TCP
+          - name: tcp6
+            containerPort: 6047
+            protocol: TCP
+          - name: tcp7
+            containerPort: 6048
+            protocol: TCP
+          - name: tcp8
+            containerPort: 6049
+            protocol: TCP
+          - name: tcp9
+            containerPort: 6060
+            protocol: TCP
+          
+          - name: udp0
+            containerPort: 6044
+            protocol: UDP
+          - name: udp1
+            containerPort: 6045
+            protocol: UDP
+
+          env:
+          # POD_NAME for FQDN config
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          # SERVICE_NAME and NAMESPACE for fqdn resolve
+          - name: SERVICE_NAME
+            value: tdtest-tdengine
+          - name: STS_NAME
+            value: tdtest-tdengine
+          - name: STS_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          # TZ for timezone settings, we recommend to always set it.
+          - name: TZ
+            value: Asia/Shanghai
+          # TAOS_ prefix will configured in taos.cfg, strip prefix and camelCase.
+          - name: TAOS_SERVER_PORT
+            value: "6030"
+          # Must set if you want a cluster.
+          - name: TAOS_FIRST_EP
+            value: '$(STS_NAME)-0.$(SERVICE_NAME).$(STS_NAMESPACE).svc.cluster.local:$(TAOS_SERVER_PORT)'
+          # TAOS_FQND should always be setted in k8s env.
+          - name: TAOS_FQDN
+            value: '$(POD_NAME).$(SERVICE_NAME).$(STS_NAMESPACE).svc.cluster.local'
+
+          envFrom:
+          - configMapRef:
+              name: tdtest-tdengine-taoscfg
+          volumeMounts:
+          - name: tdtest-tdengine-taosdata
+            mountPath: /var/lib/taos
+          - name: tdtest-tdengine-taoslog
+            mountPath: /var/log/taos
+          readinessProbe:
+            exec:
+              command:
+              - taos-check
+            initialDelaySeconds: 5
+            timeoutSeconds: 5000
+          livenessProbe:
+            exec:
+              command:
+              - taos-check
+            initialDelaySeconds: 15
+            periodSeconds: 20
+  volumeClaimTemplates:
+  - metadata:
+      name: tdtest-tdengine-taosdata
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      storageClassName: "hostpath"
+      resources:
+        requests:
+          storage: "10Gi"
+  - metadata:
+      name: tdtest-tdengine-taoslog
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      storageClassName: "hostpath"
+      resources:
+        requests:
+          storage: "5Gi"
