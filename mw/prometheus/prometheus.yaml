@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/instance: prometheus-cluster
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/version: 2.48.1
+  name: prometheus
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus-cluster
+spec:
+  version: v2.48.1
+  # 上下文路径
+  # externalUrl: /
+  # 部署3个
+  replicas: 2
+  # 数据分片存储到2个节点
+  shards: 2
+  serviceAccountName: prometheus
+  # serviceMonitorNamespaceSelector:
+  serviceMonitorSelector:
+    matchLabels: 
+      prometheus.name: prometheus-cluster
+  enableAdminAPI: true
+  storage:
+    volumeClaimTemplate:
+      spec:
+        # storageClassName: microk8s-hostpath
+        resources:
+          requests:
+            storage: 4Gi
+  resources:
+    requests:
+      memory: 400Mi

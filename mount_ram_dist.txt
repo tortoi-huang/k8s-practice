@@ -1,3 +1,0 @@
-将内存挂在到磁盘模拟磁盘
-$mkdir /mnt/ram-disks
-$for vol in vol1 vol2 vol3; do mkdir /mnt/ram-disks/$vol; mount -t tmpfs $vol /mnt/ram-disks/$vol; done

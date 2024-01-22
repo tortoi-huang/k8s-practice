@@ -9,10 +9,19 @@
         pvc如果绑定了pv则删除pvc会使pv失效无法使用。
     1.4. sc(storage class), 存储类，提供一组配置，指示一个pvc是应该绑定到已有的pv还是动态创建pv，如果是动态创建怎还需要提供创建的参数。其中provisioner属性指定存储管理的实际应用程序，如果不是内置的provisioner通常运行在一个pod上，PersistentVolumeController会调用provisioner来创建和销毁pv。
 2. 实验:
-    2.1. 执行pod-pv.yaml创建 pv、pvc、sc， 其中:
+    2.1. 参考 mount_ram_dist.txt 在节点上创建挂载目录, 如果是 docker-desktop 则应该是节点 wsl -d docker-desktop
+    2.2. 执行pod-pv.yaml创建 pv、pvc、sc， 其中:
     pvc2-without-class(pvc)手工绑定了pv，创建后状态为Bound状态，
     pvc3-with-class(pvc)动态绑定了预先制备的pv，创建后状态为Pending状态，直到第一个被pod请求该pvc，pod被删除状态不会变化, 删除pvc或导致已绑定的pv状态变为fail，无法再使用，如果pvc尚未绑定到pv则不受影响。
     name-of-storage-class3指示pvc3-with-class(pvc)等到pod消费时才会绑定到pv上。provisioner指示不会动态创建pv
     local类型pv不支持自动制备pv，暂时无法测试.
-    2.2. 执行执行pod-pvc-consumer.yaml 创建po消费pvc， 检查pvc和pc的状态，原来pending的pvc会绑定到pv上，删除pod，pv、pvc状态不变
+    ```shell
+    kubectl apply -f pod-pv.yaml
+    kubectl get -f pod-pv.yaml
+    ```
+    2.3. 执行执行pod-pvc-consumer.yaml 创建po消费pvc， 检查pvc和pc的状态，原来pending的pvc会绑定到pv上，删除pod，pv、pvc状态不变
+    ```shell
+    kubectl apply -f pod-pvc-consumer.yaml
+    kubectl get -f pod-pvc-consumer.yaml
+    ```
 3. 其他： kubernetes有两种node,其中一种是传统的提供cpu和内存的node，另外一种是提供存储的CSINode, 这类node提供存储用来部署pv,可以通过 kubectl get CSINode 来查看
