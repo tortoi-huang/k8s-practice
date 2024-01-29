@@ -1,0 +1,74 @@
+extraEnvs:
+  - name: ELASTIC_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: password
+
+# createCert: false必须和esConfig或者环境变量禁用ssl一起配置否则无法启动
+createCert: false
+protocol: http
+
+secret:
+  enabled: false
+service:
+  enabled: false
+# 默认值
+clusterName: "elasticsearch"
+nodeGroup: "data"
+roles:
+#   - master
+  - data
+  - data_content
+  - data_hot
+  - data_warm
+  - data_cold
+  - ingest
+  - ml
+  - remote_cluster_client
+  - transform
+# replicas: 3
+# minimumMasterNodes: 2
+
+# secretMounts:
+#   - name: elastic-certificates
+#     secretName: multi-master-certs
+#     path: /usr/share/elasticsearch/config/certs
+
+tests:
+  enabled: false
+
+# Disable privileged init Container creation.
+# sysctlInitContainer:
+#   enabled: false
+
+# 禁用ssl esConfig 配置必须和 createCert: false 一起配置，否则无法启动
+esConfig:
+  elasticsearch.yml: |
+    node.store.allow_mmap: false
+    xpack.security.enabled: false
+    xpack.security.transport.ssl.enabled: false
+    xpack.security.http.ssl.enabled: false
+
+# Permit co-located instances for solitary minikube virtual machines.
+antiAffinity: "soft"
+
+# Shrink default JVM heap.
+esJavaOpts: "-Xmx128m -Xms128m"
+
+# Allocate smaller chunks of memory per pod.
+resources:
+  requests:
+    cpu: "100m"
+    memory: "512M"
+  limits:
+    cpu: "1000m"
+    memory: "512M"
+
+# Request smaller persistent volumes.
+volumeClaimTemplate:
+  accessModes: [ "ReadWriteOnce" ]
+  storageClassName: "microk8s-hostpath"
+  resources:
+    requests:
+      storage: 100M

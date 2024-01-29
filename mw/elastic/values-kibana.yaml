@@ -1,0 +1,49 @@
+---
+elasticsearchHosts: "https://elasticsearch-master:9200"
+# elasticsearchCertificateSecret: elasticsearch-master-certs
+# elasticsearchCertificateAuthoritiesFile: ca.crt
+elasticsearchCredentialSecret: elasticsearch-master-credentials
+
+replicas: 1
+
+# Extra environment variables to append to this nodeGroup
+# This will be appended to the current 'env:' key. You can use any of the kubernetes env
+# syntax here
+extraEnvs:
+  - name: "NODE_OPTIONS"
+    value: "--max-old-space-size=1800"
+#  - name: MY_ENVIRONMENT_VAR
+#    value: the_value_goes_here
+
+# Allows you to load environment variables from kubernetes secret or config map
+# envFrom: 
+#   - secretRef:
+#       name: elasticsearch-master-credentials
+# - configMapRef:
+#     name: config-map
+
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "512Mi"
+
+protocol: http
+
+serverHost: "0.0.0.0"
+
+healthCheckPath: "/app/kibana"
+
+httpPort: 5601
+
+ingress:
+  enabled: true
+  className: "public"
+  pathtype: ImplementationSpecific
+  hosts:
+    - host: kibana.local
+      paths:
+        - path: /
