@@ -1,0 +1,198 @@
+
+## @param clusterName Elasticsearch cluster name
+##
+clusterName: elastic
+## @param containerPorts.restAPI Elasticsearch REST API port
+## @param containerPorts.transport Elasticsearch Transport port
+##
+containerPorts:
+  restAPI: 9200
+  transport: 9300
+
+## X-Pack security parameters
+## Note: TLS configuration is required in order to configure password authentication
+##
+security:
+  ## @param security.enabled Enable X-Pack Security settings
+  ##
+  enabled: false
+  ## @param security.elasticPassword Password for 'elastic' user
+  ## Ref: https://github.com/bitnami/containers/tree/main/bitnami/elasticsearch#security
+  ##
+  elasticPassword: "Es123456"
+  ## TLS configuration
+  ##
+  tls:
+    ## @param security.tls.restEncryption Enable SSL/TLS encryption for Elasticsearch REST API.
+    ##
+    restEncryption: false
+
+## Elasticsearch ingress parameters
+## ref: http://kubernetes.io/docs/concepts/services-networking/ingress/
+##
+ingress:
+  ## @param ingress.enabled Enable ingress record generation for Elasticsearch
+  ##
+  enabled: true
+  ## @param ingress.hostname Default host for the ingress record
+  ##
+  hostname: console.elasticsearch.local
+  ## @param ingress.path Default path for the ingress record
+  ## NOTE: You may need to set this to '/*' in order to use this with ALB ingress controllers
+  ##
+  path: /
+  ## @param ingress.ingressClassName IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)
+  ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster .
+  ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
+  ##
+  ingressClassName: "public"
+
+## @section Master-elegible nodes parameters
+
+master:
+  ## @param master.masterOnly Deploy the Elasticsearch master-elegible nodes as master-only nodes. Recommended for high-demand deployments.
+  ## If you are
+  masterOnly: true
+  ## @param master.replicaCount Number of master-elegible replicas to deploy
+  ##
+  replicaCount: 3
+
+  ## Elasticsearch resource requests and limits
+  ## ref: http://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  ## We usually recommend not to specify default resources and to leave this as a conscious
+  ## choice for the user. This also increases chances charts run on environments with little
+  ## resources, such as Minikube. If you do want to specify resources, uncomment the following
+  ## lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  ## @param master.resources.limits The resources limits for elasticsearch containers
+  ## @param master.resources.requests The requested resources for elasticsearch containers
+  ##
+  resources:
+    ## Example:
+    limits:
+       cpu: 1000m
+       memory: 512Mi
+    ## Examples:
+    requests:
+       cpu: 100m
+       memory: 64Mi
+  ## @param master.heapSize Elasticsearch master-eligible node heap size.
+  ## Note: The recommended heapSize is half of the container's memory.
+  ## If omitted, it will be automatically set.
+  ## Example:
+  ##   heapSize: 128m
+  ##
+  heapSize: 128m
+  ## @param master.affinity Affinity for master-elegible pods assignment
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  ## NOTE: `master.podAffinityPreset`, `master.podAntiAffinityPreset`, and `master.nodeAffinityPreset` will be ignored when it's set
+  ##
+  # affinity: 
+  #   podAntiAffinityPreset: "soft"
+  ## Enable persistence using Persistent Volume Claims
+  ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  ##
+  persistence:
+    ## @param master.persistence.enabled Enable persistence using a `PersistentVolumeClaim`
+    ##
+    enabled: false
+    ## @param master.persistence.storageClass Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "microk8s-hostpath"
+    ## @param master.persistence.accessModes Persistent Volume Access Modes
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## @param master.persistence.size Persistent Volume Size
+    ##
+    size: 100Mi
+## @section Data-only nodes parameters
+
+data:
+  ## @param data.replicaCount Number of data-only replicas to deploy
+  ##
+  replicaCount: 2
+  extraRoles: data_content,data_hot,data_hot,data_warm,data_cold,data_frozen
+    # - data_content
+    # - data_hot
+    # - data_warm
+    # - data_cold
+    # - data_frozen
+  ## Elasticsearch resource requests and limits
+  ## ref: http://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+  ## @param data.resources.limits The resources limits for the data containers
+  ## @param data.resources.requests [object] The requested resources for the data containers
+  ##
+  resources:
+    limits: 
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 25m
+      memory: 64Mi
+  ## @param data.heapSize Elasticsearch data node heap size.
+  ## Note: The recommended heapSize is half of the container's memory.
+  ## If omitted, it will be automatically set.
+  ## Example:
+  ##   heapSize: 128m
+  ##
+  heapSize: 128m
+  ## @param data.affinity Affinity for data pods assignment
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  ## NOTE: `data.podAffinityPreset`, `data.podAntiAffinityPreset`, and `data.nodeAffinityPreset` will be ignored when it's set
+  ##
+  # affinity: 
+  #   podAntiAffinityPreset: "soft"
+  ## Enable persistence using Persistent Volume Claims
+  ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  ##
+  persistence:
+    ## @param data.persistence.enabled Enable persistence using a `PersistentVolumeClaim`
+    ##
+    enabled: true
+    ## @param data.persistence.storageClass Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "microk8s-hostpath"
+    ## @param data.persistence.accessModes Persistent Volume Access Modes
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## @param data.persistence.size Persistent Volume Size
+    ##
+    size: 100Mi
+
+coordinating:
+  replicaCount: 1
+  heapSize: 128m
+  resources:
+    limits: 
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 25m
+      memory: 128Mi
+
+ingest:
+  enabled: false
+
+
+## @section Kibana Parameters
+
+## Bundled Kibana parameters
+## @param kibana.elasticsearch.hosts [array] Array containing hostnames for the ES instances. Used to generate the URL
+## @param kibana.elasticsearch.port Port to connect Kibana and ES instance. Used to generate the URL
+##
+kibana:
+  elasticsearch:
+    hosts:
+      - '{{ include "elasticsearch.service.name" . }}'
+    port: '{{ include "elasticsearch.service.ports.restAPI" . }}'

@@ -1,0 +1,79 @@
+# Copyright VMware, Inc.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+
+## @param replicaCount Number of replicas of the Kibana Pod
+##
+replicaCount: 1
+## Enable persistence using Persistent Volume Claims
+## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+##
+persistence:
+  ## @param persistence.storageClass Kibana data Persistent Volume Storage Class
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  # storageClass: "microk8s-hostpath"
+  ## @param persistence.accessModes Persistent Volume access modes
+  ##
+  # accessModes:
+  #   - ReadWriteOnce
+  ## @param persistence.size Size for the PV
+  ##
+  size: 100Mi
+
+## Configure the ingress resource that allows you to access the
+## Kibana installation. Set up the URL
+## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
+##
+ingress:
+  ## @param ingress.enabled Enable ingress controller resource
+  ##
+  enabled: true
+  ## @param ingress.hostname Default host for the ingress resource. If specified as "*" no host rule is configured
+  ##
+  hostname: kibana.local
+  ## @param ingress.path The Path to Kibana. You may need to set this to '/*' in order to use this with ALB ingress controllers.
+  ##
+  path: /
+  ingressClassName: "public"
+
+## Kibana resource requests and limits
+## ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+## We usually recommend not to specify default resources and to leave this as a conscious
+## choice for the user. This also increases chances charts run on environments with little
+## resources, such as Minikube. If you do want to specify resources, uncomment the following
+## lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+## @param resources.limits The resources limits for the container
+## @param resources.requests The requested resources for the container
+##
+# resources:
+#   limits:
+#      cpu: 500m
+#      memory: 512Mi
+#   requests:
+#      cpu: 100m
+#      memory: 64Mi
+
+## @section Elasticsearch parameters
+##
+elasticsearch:
+  ## @param elasticsearch.hosts List of elasticsearch hosts to connect to.
+  hosts:
+    - elasticsearch
+  port: 9200
+
+  security:
+    auth:
+      ## @param elasticsearch.security.auth.enabled Set to 'true' if Elasticsearch has authentication enabled
+      ##
+      enabled: true
+      ## @param elasticsearch.security.auth.kibanaPassword Password of the 'kibana_system' user, used to authenticate Kibana connection with Elasticsearch.
+      ##
+      kibanaPassword: "Kb123456"
