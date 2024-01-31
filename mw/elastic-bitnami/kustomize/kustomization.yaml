@@ -17,13 +17,13 @@ helmCharts:
   repo: https://charts.bitnami.com/bitnami
   version: 19.17.0
   releaseName: elasticsearch
-  # namespace: mw
+  namespace: mw
   # override with these custom values
   valuesFile: values-es-single.yaml
 - name: kibana
   repo: https://charts.bitnami.com/bitnami
   version: 10.8.0
   releaseName: kibana
-  # namespace: mw
+  namespace: mw
   # override with these custom values
   valuesFile: values-kb.yaml
