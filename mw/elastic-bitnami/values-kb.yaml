@@ -1,10 +1,7 @@
-# Copyright VMware, Inc.
-# SPDX-License-Identifier: APACHE-2.0
-
-## @section Global parameters
-## Global Docker image parameters
-## Please, note that this will override the image parameters, including dependencies, configured to use the global value
-
+## @param extraConfiguration Extra settings to be added to the default kibana.yml configmap that the chart creates (unless replaced using `configurationCM`). Evaluated as a template
+# extraConfiguration:
+#   elasticsearch.username: elastic
+#   elasticsearch.password: Es123456
 ## @param replicaCount Number of replicas of the Kibana Pod
 ##
 replicaCount: 1
@@ -75,5 +72,14 @@ elasticsearch:
       ##
       enabled: true
       ## @param elasticsearch.security.auth.kibanaPassword Password of the 'kibana_system' user, used to authenticate Kibana connection with Elasticsearch.
-      ##
+      ## 默认用户名为: elastic
       kibanaPassword: "Kb123456"
+      createSystemUser: true
+      elasticsearchPasswordSecret: elasticsearch
+    tls:
+      ## @param elasticsearch.security.tls.enabled Set to 'true' if Elasticsearch API uses TLS/SSL (HTTPS)
+      ##
+      enabled: true
+      existingSecret: elasticsearch-master-crt
+      # 这个参数必须配置，否则导致错误: In order to connect to Elasticsearch via HTTPS, a valid PKCS12 truststore is required
+      usePemCerts: true
