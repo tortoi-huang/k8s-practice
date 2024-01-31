@@ -96,8 +96,8 @@ master:
   ##
   persistence:
     ## @param master.persistence.enabled Enable persistence using a `PersistentVolumeClaim`
-    ##
-    enabled: false
+    ## 必须持久化保存集群信息，否则重启cluster uuid会变化导致 data节点连接不上
+    enabled: true
     ## @param master.persistence.storageClass Persistent Volume Storage Class
     ## If defined, storageClassName: <storageClass>
     ## If set to "-", storageClassName: "", which disables dynamic provisioning
@@ -133,7 +133,7 @@ data:
   resources:
     limits: 
       cpu: 500m
-      memory: 512Mi
+      memory: 640Mi
     requests:
       cpu: 25m
       memory: 128Mi
