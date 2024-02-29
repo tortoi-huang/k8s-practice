@@ -1,10 +1,8 @@
 mw/pulsar/pulsar-3.0.0.tgz
 mw/pulsar/pulsar/*
 
-
 mw/minio/minio-12.13.2.tgz
 mw/minio/minio/*
-
 
 mw/elastic-bitnami/elasticsearch/*
 mw/elastic-bitnami/kibana/*
@@ -14,3 +12,6 @@ mw/elastic-bitnami/elasticsearch-19.17.0.yaml
 mw/elastic-bitnami/kibana-10.8.0.yaml
 mw/elastic-bitnami/kustomize/charts
 mw/elastic-bitnami/kustomize/k.yaml
+
+mw/vault/vault/*
+mw/vault/*.tgz
