@@ -12,6 +12,7 @@ mw/elastic-bitnami/elasticsearch-19.17.0.yaml
 mw/elastic-bitnami/kibana-10.8.0.yaml
 mw/elastic-bitnami/kustomize/charts
 mw/elastic-bitnami/kustomize/k.yaml
+mw/elastic-bitnami/kustomize/overlays/single/charts/*
 
-mw/vault/vault/*
-mw/vault/*.tgz
+/mw/vault/vault/*
+/mw/vault/*.tgz

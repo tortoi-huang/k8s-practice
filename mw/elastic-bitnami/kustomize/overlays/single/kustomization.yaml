@@ -1,0 +1,13 @@
+helmCharts:
+- name: elasticsearch
+  repo: https://charts.bitnami.com/bitnami
+  version: 19.17.0
+  releaseName: elasticsearch
+  namespace: mw
+  valuesFile: values-es.yaml
+# - name: kibana
+#   repo: https://charts.bitnami.com/bitnami
+#   version: 10.8.0
+#   releaseName: kibana
+#   namespace: mw
+#   valuesFile: values-kb.yaml
