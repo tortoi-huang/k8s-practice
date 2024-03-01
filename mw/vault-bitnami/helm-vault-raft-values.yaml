@@ -1,0 +1,38 @@
+server:
+  persistence:
+    size: 100Mi
+    # storageClass: null
+    # accessModes: 
+    #   - ReadWriteOnce
+  replicaCount: 3
+  config: |
+    disable_mlock = true
+    cluster_name = "vault-test1"
+    ui = true
+    listener "tcp" {
+      tls_disable = 1
+      address = "[::]:{{ .Values.server.containerPorts.http }}"
+      cluster_address = "[::]:{{ .Values.server.containerPorts.internal }}"
+      {{- if .Values.server.metrics.enabled }}
+      # Enable unauthenticated metrics access (necessary for Prometheus Operator)
+      telemetry {
+        unauthenticated_metrics_access = "true"
+      }
+      {{- end }}
+    }
+    storage "raft" {
+      path = "{{ .Values.server.persistence.mountPath }}"
+    }
+
+    service_registration "kubernetes" {}
+  ingress:
+    # enabled: true
+    ingressClassName: public
+    hostname: vault.local
+  networkPolicy:
+    enabled: false
+injector:
+  networkPolicy:
+    enabled: false
+csiProvider:
+  enabled: false

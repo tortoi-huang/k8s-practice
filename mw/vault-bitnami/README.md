@@ -2,13 +2,13 @@
 # 安装
 使用helm生成yaml文件使用 kubectl安装。
 ```shell
-# helm pull hashicorp/vault --version 0.27.0
-# tar -xzf vault-0.27.0.tgz
+# helm pull bitnami/vault --version 0.10.2
+# tar -xzf vault-0.10.2.tgz
 # cp vault/values.yaml values.yaml
-helm template vault hashicorp/vault -n mw --version 0.27.0 --include-crds --values helm-vault-raft-values.yaml > helm-vault-raft-values-0.27.0.yaml
+helm template vault bitnami/vault -n mw --version 0.10.2 --include-crds --values helm-vault-raft-values.yaml > helm-vault-raft-values-0.10.2.yaml
 
-kubectl apply -f helm-vault-raft-values-0.27.0.yaml
-# helm install vault hashicorp/vault -n mw --version 0.27.0 --values helm-vault-raft-values.yaml
+kubectl apply -f helm-vault-raft-values-0.10.2.yaml
+# helm install vault hashicorp/vault -n mw --version 0.10.2 --values helm-vault-raft-values.yaml
 ```
 
 # 初始化
@@ -36,7 +36,6 @@ kubectl exec -it pod/vault-0 -n mw -- vault operator init
 kubectl exec -it pod/vault-0 -n mw -- vault operator unseal  +9rLJ3FkrfjXMJLHR+5HH3ZtkOD75yMcLFDzWNsykZ/1
 kubectl exec -it pod/vault-0 -n mw -- vault operator unseal  tKg8y1mLoleBRBnQgBio3LhmxFTG2F1ijqHA1dF8UXdb
 kubectl exec -it pod/vault-0 -n mw -- vault operator unseal  7cINoLezc1tAie5sLnNvtAxrDvbdviZEagAOZHDq0NMM
-
 
 kubectl exec -it pod/vault-1 -n mw -- vault operator raft join http://vault-0.vault-internal:8200
 kubectl exec -it pod/vault-1 -n mw -- vault operator unseal  +9rLJ3FkrfjXMJLHR+5HH3ZtkOD75yMcLFDzWNsykZ/1
