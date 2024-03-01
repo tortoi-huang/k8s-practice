@@ -21,51 +21,46 @@ vault刚安装好是不能使用的，pod 状态不为 ready， 需要初始化�
 
 以下通过shell 命令生成 实际也可以通过 首次访问ui时通过ui界面操作: http://localhost:8200/ui
 ```shell
+# 这段shell代码可以通过执行 init_vault.sh 完胜
 # 初始化生成节点的 share key 和 root key, 集群的每个节点都要单独初始化
 kubectl exec -it pod/vault-0 -n mw -- vault operator init
-# Unseal Key 1: pWFgnxUtv9ZSLoepf/a7bNjw788sXn7sWobbj5pEwLVv
-# Unseal Key 2: PQqNtn5ylucNMeP9N3jao80SIcfXx9hVASeHzUS3xzDQ
-# Unseal Key 3: WvUGEeDBg997YMa3fuNVzscmPb5MDgByY6fC2I/L742A
-# Unseal Key 4: u7hWob63Ykt7wAASyRRBwwYhwOiuF5RMWAtjXkZGoKGD
-# Unseal Key 5: BVZYYazLYYrmCi9mYrTWEBDA+HOTEBTNoZsXK/KEkFsX
+# Unseal Key 1: +9rLJ3FkrfjXMJLHR+5HH3ZtkOD75yMcLFDzWNsykZ/1
+# Unseal Key 2: tKg8y1mLoleBRBnQgBio3LhmxFTG2F1ijqHA1dF8UXdb
+# Unseal Key 3: 7cINoLezc1tAie5sLnNvtAxrDvbdviZEagAOZHDq0NMM
+# Unseal Key 4: rfm/FMh12qQw1G+pNSgpCLz++m4xKSK1tGTKpnKG7z6Y
+# Unseal Key 5: aJn8HfF7fBJIe8OeAWACWG9TF72V+UhnX24jpmJT08Dk
 
-# Initial Root Token: hvs.iHCXzUSlUVbrHaNEdnAGLsWl
+# Initial Root Token: hvs.ntooV7oj4iUiWCP7FM3xCqT3
 
 # 每次启动需要提供至少3个share key 来解封节点，其实时解密 root key
-kubectl exec -it pod/vault-0 -n mw -- vault operator unseal pWFgnxUtv9ZSLoepf/a7bNjw788sXn7sWobbj5pEwLVv
-kubectl exec -it pod/vault-0 -n mw -- vault operator unseal PQqNtn5ylucNMeP9N3jao80SIcfXx9hVASeHzUS3xzDQ
-kubectl exec -it pod/vault-0 -n mw -- vault operator unseal WvUGEeDBg997YMa3fuNVzscmPb5MDgByY6fC2I/L742A
-# kubectl exec -it pod/vault-0 -n mw -- vault operator unseal u7hWob63Ykt7wAASyRRBwwYhwOiuF5RMWAtjXkZGoKGD
-# kubectl exec -it pod/vault-0 -n mw -- vault operator unseal BVZYYazLYYrmCi9mYrTWEBDA+HOTEBTNoZsXK/KEkFsX
+kubectl exec -it pod/vault-0 -n mw -- vault operator unseal  +9rLJ3FkrfjXMJLHR+5HH3ZtkOD75yMcLFDzWNsykZ/1
+kubectl exec -it pod/vault-0 -n mw -- vault operator unseal  tKg8y1mLoleBRBnQgBio3LhmxFTG2F1ijqHA1dF8UXdb
+kubectl exec -it pod/vault-0 -n mw -- vault operator unseal  7cINoLezc1tAie5sLnNvtAxrDvbdviZEagAOZHDq0NMM
 
 
 kubectl exec -it pod/vault-1 -n mw -- vault operator init
-Unseal Key 1: IHhTQOi+P66r5tBg9BwOiPqZJ2XuxIZ8CRwSa362vfDz
-Unseal Key 2: bPRqf1kjNyTL30kM4Bl70WjWjnRO3pnGP7qKkA60/KKt
-Unseal Key 3: pMUOuz8XpkB0JGjVVm+I7ki2OMzv657oV0er+fCl0dJY
-Unseal Key 4: Asi2MjOkYj2aag8SUvf3runsGSomhixNQRXc/ffSx2KO
-Unseal Key 5: IDalhQcFOZhs1LCqxnu9V4nG9wWWNbKiz0EcuIDPP9z+
+# Unseal Key 1: boi8/2QxhKaTlW3xAZRTPWbqv9IDVNnWrLsOK04ebyAy
+# Unseal Key 2: dKN4Dtx7Mlxt9Y0DKGC4XO3WpuEL9SAPsDn/YtKPIy84
+# Unseal Key 3: xH3/o00Doav2QjkEDiPjA2g/TG78V216hE0FZqrnal4q
+# Unseal Key 4: 5KGCBGCdMpemhDWq9m0PznsmwhR2dNLRZsIuLMHHTa+J
+# Unseal Key 5: /b8mcBqnJnqj0ySzADM9RmQHNDqYkb2tkLU+8gDsIlUz
 
-Initial Root Token: hvs.DIqFtjivXha2d24DXaynIi8Q
-kubectl exec -it pod/vault-1 -n mw -- vault operator unseal IHhTQOi+P66r5tBg9BwOiPqZJ2XuxIZ8CRwSa362vfDz
-kubectl exec -it pod/vault-1 -n mw -- vault operator unseal bPRqf1kjNyTL30kM4Bl70WjWjnRO3pnGP7qKkA60/KKt
-kubectl exec -it pod/vault-1 -n mw -- vault operator unseal pMUOuz8XpkB0JGjVVm+I7ki2OMzv657oV0er+fCl0dJY
-# kubectl exec -it pod/vault-1 -n mw -- vault operator unseal Asi2MjOkYj2aag8SUvf3runsGSomhixNQRXc/ffSx2KO
-# kubectl exec -it pod/vault-1 -n mw -- vault operator unseal IDalhQcFOZhs1LCqxnu9V4nG9wWWNbKiz0EcuIDPP9z+
+# Initial Root Token: hvs.lSxw0sgwT82WLl6biOJv4fJo
+kubectl exec -it pod/vault-1 -n mw -- vault operator unseal  boi8/2QxhKaTlW3xAZRTPWbqv9IDVNnWrLsOK04ebyAy
+kubectl exec -it pod/vault-1 -n mw -- vault operator unseal  dKN4Dtx7Mlxt9Y0DKGC4XO3WpuEL9SAPsDn/YtKPIy84
+kubectl exec -it pod/vault-1 -n mw -- vault operator unseal  xH3/o00Doav2QjkEDiPjA2g/TG78V216hE0FZqrnal4q
 
 kubectl exec -it pod/vault-2 -n mw -- vault operator init
-# Unseal Key 1: uyfCBhC7+cLMNfEJViFuqimOaU2Y7hatG23V9g94PNLB
-# Unseal Key 2: ss4MKXugcyVTxqYYoKDiHBMG8gQGLW1uZNs3HVsC3syi
-# Unseal Key 3: oS9FfxIPu9NCWS061J6u6tYKVO47wt9DhnFn0M7riEbx
-# Unseal Key 4: EwFhbZLo8zsI07Dn5v+IAMCrAy///IY7h4Yio3kECczr
-# Unseal Key 5: vYfekMom/RkdvW+fjrglTXeJfZ3DsQGULGCYXdEh6lTM
+# Unseal Key 1: QT42WtFQDf0t4Lbp1RemZcw+qXvccDKycewWrSp30aNz
+# Unseal Key 2: 6EsBTdiu3X6ZNmYjgsBKytPoB9akXGtuA4sIfkCrzZOi
+# Unseal Key 3: 6Xa3zDHcNlw6+wbCpJpETZ92E0aSLyw/Ka2Qg3UzXEfP
+# Unseal Key 4: lzr7caUBFuIpAAf12raCU7avcJ/oPJsmLcvSTvQQ97kB
+# Unseal Key 5: lqTIm04hN+vZ1zCITRjO1Js63/EOsPRMuMubmnGuXonZ
 
-# Initial Root Token: hvs.6OxRW3TaTGySvrQ2qunx0zXr
-kubectl exec -it pod/vault-2 -n mw -- vault operator unseal uyfCBhC7+cLMNfEJViFuqimOaU2Y7hatG23V9g94PNLB
-kubectl exec -it pod/vault-2 -n mw -- vault operator unseal ss4MKXugcyVTxqYYoKDiHBMG8gQGLW1uZNs3HVsC3syi
-kubectl exec -it pod/vault-2 -n mw -- vault operator unseal oS9FfxIPu9NCWS061J6u6tYKVO47wt9DhnFn0M7riEbx
-# kubectl exec -it pod/vault-2 -n mw -- vault operator unseal EwFhbZLo8zsI07Dn5v+IAMCrAy///IY7h4Yio3kECczr
-# kubectl exec -it pod/vault-2 -n mw -- vault operator unseal vYfekMom/RkdvW+fjrglTXeJfZ3DsQGULGCYXdEh6lTM
+# Initial Root Token: hvs.itOYq2YcJvpmAAKBhXV8xknH
+kubectl exec -it pod/vault-2 -n mw -- vault operator unseal  QT42WtFQDf0t4Lbp1RemZcw+qXvccDKycewWrSp30aNz
+kubectl exec -it pod/vault-2 -n mw -- vault operator unseal  6EsBTdiu3X6ZNmYjgsBKytPoB9akXGtuA4sIfkCrzZOi
+kubectl exec -it pod/vault-2 -n mw -- vault operator unseal  6Xa3zDHcNlw6+wbCpJpETZ92E0aSLyw/Ka2Qg3UzXEfP
 ```
 
 # 访问web UI

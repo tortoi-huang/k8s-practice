@@ -1,27 +1,39 @@
-# ui:
-#  enabled: true
+ui:
+  enabled: true
 server:
   dataStorage:
     size: 100Mi
     # storageClass: null
     # accessMode: ReadWriteOnce
   affinity: ""
+  logLevel: debug
   ha:
     enabled: true
     replicas: 3
     raft:
       enabled: true
-      setNodeId: true
+      # setNodeId: true
       config: |
+        cluster_name = "vault-test1"
         ui = true
-        cluster_name = "vault-integrated-storage"
-        storage "raft" {
-          path   = "/vault/data/"
-        }
 
         listener "tcp" {
+          tls_disable = 1
           address = "[::]:8200"
           cluster_address = "[::]:8201"
-          tls_disable = "true"
+          # Enable unauthenticated metrics access (necessary for Prometheus Operator)
+          #telemetry {
+          #  unauthenticated_metrics_access = "true"
+          #}
         }
+
+        storage "raft" {
+          path = "/vault/data"
+        }
+
         service_registration "kubernetes" {}
+  ingress:
+    enabled: true
+    ingressClassName: public
+    hosts:
+      - host: vault.local

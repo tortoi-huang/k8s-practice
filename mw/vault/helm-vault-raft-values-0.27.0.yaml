@@ -57,17 +57,23 @@ metadata:
 data:
   extraconfig-from-values.hcl: |-
     disable_mlock = true
+    cluster_name = "vault-test1"
     ui = true
-    cluster_name = "vault-integrated-storage"
-    storage "raft" {
-      path   = "/vault/data/"
-    }
     
     listener "tcp" {
+      tls_disable = 1
       address = "[::]:8200"
       cluster_address = "[::]:8201"
-      tls_disable = "true"
+      # Enable unauthenticated metrics access (necessary for Prometheus Operator)
+      #telemetry {
+      #  unauthenticated_metrics_access = "true"
+      #}
     }
+    
+    storage "raft" {
+      path = "/vault/data"
+    }
+    
     service_registration "kubernetes" {}
 ---
 # Source: vault/templates/injector-clusterrole.yaml
@@ -298,6 +304,29 @@ spec:
     app.kubernetes.io/name: vault
     app.kubernetes.io/instance: vault
     component: server
+---
+# Source: vault/templates/ui-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-ui
+  namespace: mw
+  labels:
+    helm.sh/chart: vault-0.27.0
+    app.kubernetes.io/name: vault-ui
+    app.kubernetes.io/instance: vault
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: vault
+    component: server
+  publishNotReadyAddresses: true
+  ports:
+    - name: http
+      port: 8200
+      targetPort: 8200
+  type: ClusterIP
 ---
 # Source: vault/templates/injector-deployment.yaml
 # Deployment for the injector
@@ -531,12 +560,10 @@ spec:
                   fieldPath: metadata.name
             - name: VAULT_CLUSTER_ADDR
               value: "https://$(HOSTNAME).vault-internal:8201"
-            - name: VAULT_RAFT_NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
             - name: HOME
               value: "/home/vault"
+            - name: VAULT_LOG_LEVEL
+              value: "debug"
             
             
             
@@ -601,6 +628,32 @@ spec:
         resources:
           requests:
             storage: 100Mi
+---
+# Source: vault/templates/server-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vault
+  namespace: mw
+  labels:
+    helm.sh/chart: vault-0.27.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: vault
+    app.kubernetes.io/managed-by: Helm
+spec:
+  ingressClassName: public
+  rules:
+    - host: "vault.local"
+      http:
+        paths:
+
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vault-active
+                port:
+                  number: 8200
 ---
 # Source: vault/templates/injector-mutating-webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1

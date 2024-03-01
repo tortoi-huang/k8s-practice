@@ -16,3 +16,4 @@ mw/elastic-bitnami/kustomize/overlays/single/charts/*
 
 /mw/vault/vault/*
 /mw/vault/*.tgz
+/mw/vault/key*.txt
