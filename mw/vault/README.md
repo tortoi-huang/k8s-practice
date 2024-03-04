@@ -63,3 +63,5 @@ kubectl port-forward service/vault 8200:http -n mw
 # 问题
 1. pod启动后是如何知道vault集群的其他节点的？ 通过配置文件中的 service_registration配置决定如何寻找其他节点， 如配置了consul则跟微服务注册一样， 注册自己到consul并通过consul做服务发现。 这里配置的是kubernetes, 通过查找当前命名空间内包含label: vault-interna=true 的 service 去发现其他的pod, 并通过label获取pod的一些状态
 2. 为社么不能在启动时初始化(auto-unseal)，因为所有数据都是加密的，加密数据的密钥需要初始化时生成，并且不能保存到本地硬盘(不安全),需要人工记录, 这些密钥需要在服务启动是提供（重启），否则无法读取磁盘上数据. 官方提供了使用 k8s 的KMS服务保存这密钥从而可以自动初始化(auto-unseal), 但是KMS不是标准k8s的功能，而vault 本身主要工作就是KMS解决方案之一。 
+3. 登录 access/Authentication Methods 有多个methods时，会有一个默认的，界面上看不出来，一般来水是第一个添加的methods, 其他的methods的用户登录需要在登录界面输入mount path， 改输入框在 more options 处隐藏。 默认用户登录后会在 access/entities处新增一行entity记录，通过该记录授权 policy
+

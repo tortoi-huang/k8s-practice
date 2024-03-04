@@ -21,3 +21,6 @@
 /mw/vault-bitnami/vault/*
 /mw/vault-bitnami/*.tgz
 /mw/vault-bitnami/key*.txt
+
+/mw/mongodb-sharded/mongodb-sharded/*
+/mw/mongodb-sharded/*.tgz

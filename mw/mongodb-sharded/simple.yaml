@@ -1,0 +1,107 @@
+## MongoDB(&reg;) Authentication parameters
+##
+auth:
+  ## @param auth.enabled Enable authentication
+  ## ref: https://docs.mongodb.com/manual/tutorial/enable-authentication/
+  ##
+  enabled: true
+  ## @param auth.rootUser MongoDB(&reg;) root user
+  ##
+  rootUser: root
+  ## @param auth.rootPassword MongoDB(&reg;) root password
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/mongodb#setting-the-root-user-and-password-on-first-run
+  ##
+  rootPassword: "mongo123"
+## @param shards Number of shards to be created
+## ref: https://docs.mongodb.com/manual/core/sharded-cluster-shards/
+##
+shards: 2
+## Network Policies
+## Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+  ##
+  enabled: false
+## @section Config Server parameters
+##
+
+## Config Server replica set properties
+## ref: https://docs.mongodb.com/manual/core/sharded-cluster-config-servers/
+##
+configsvr:
+  ## @param configsvr.replicaCount Number of nodes in the replica set (the first node will be primary)
+  ##
+  replicaCount: 1
+  ## Enable persistence using Persistent Volume Claims
+  ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  ##
+  persistence:
+    enabled: true
+    mountPath: /bitnami/mongodb
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 100Mi
+## Mongos properties
+## ref: https://docs.mongodb.com/manual/reference/program/mongos/#bin.mongos
+##
+mongos:
+  ## @param mongos.replicaCount Number of replicas
+  ##
+  replicaCount: 1
+## @section Shard configuration: Data node parameters
+##
+
+## Shard replica set properties
+## ref: https://docs.mongodb.com/manual/replication/index.html
+##
+shardsvr:
+  ## Properties for data nodes (primary and secondary)
+  ##
+  dataNode:
+    ## @param shardsvr.dataNode.replicaCount Number of nodes in each shard replica set (the first node will be primary)
+    ##
+    replicaCount: 2
+  ## @section Shard configuration: Persistence parameters
+  ##
+
+  ## Enable persistence using Persistent Volume Claims
+  ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  ##
+  persistence:
+    ## @param shardsvr.persistence.enabled Use a PVC to persist data
+    ##
+    enabled: true
+    ## @param shardsvr.persistence.mountPath The path the volume will be mounted at, useful when using different MongoDB&reg; images.
+    ##
+    mountPath: /bitnami/mongodb
+    ## @param shardsvr.persistence.subPath Subdirectory of the volume to mount at (evaluated as a template)
+    ## Useful in development environments and one PV for multiple services.
+    ##
+    subPath: ""
+    ## @param shardsvr.persistence.storageClass Storage class of backing PVC
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    storageClass: ""
+    ## @param shardsvr.persistence.accessModes Use volume as ReadOnly or ReadWrite
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## @param shardsvr.persistence.size PersistentVolumeClaim size
+    ##
+    size: 100Mi
+  ## @section Shard configuration: Arbiter parameters
+  ##
+
+  ## Properties for arbiter nodes
+  ## ref: https://docs.mongodb.com/manual/tutorial/add-replica-set-arbiter/
+  ##
+  # arbiter:
+  #   ## @param shardsvr.arbiter.replicaCount Number of arbiters in each shard replica set (the first node will be primary)
+  #   ##
+  #   replicaCount: 0
