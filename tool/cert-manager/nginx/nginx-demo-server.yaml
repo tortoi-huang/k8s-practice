@@ -1,0 +1,163 @@
+# 开始定义应用
+# 定义service
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-tls-server
+spec:
+  ports:
+  - port: 443
+    targetPort: 443
+    name: https
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app.kubernetes.io/name: nginx-tls-demo
+---
+# 配置nginx, 使用tls
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-tls-demo-config
+  labels:
+    app.kubernetes.io/name: nginx-tls-demo
+data:
+  nginx-tls.conf: |+
+    server {
+      listen       80;
+      listen  [::]:80;
+      server_name  localhost;
+
+      location / {
+          root   /usr/share/nginx/html;
+          index  index.html index.htm;
+      }
+      error_page   500 502 503 504  /50x.html;
+      location = /50x.html {
+          root   /usr/share/nginx/html;
+      }
+    }
+    server {
+      listen       443 ssl;
+      listen  [::]:443 ssl;
+
+      # 配置tls
+      ssl_certificate          /certs/tls.crt;
+      ssl_certificate_key      /certs/tls.key;
+
+      # 配置客户端身份认证
+      ssl_trusted_certificate  /certs/ca.crt;
+      ssl_client_certificate   /certs/ca.crt;
+      ssl_verify_client        on;
+      ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+
+      # server_name  localhost;
+      location / {
+          root   /usr/share/nginx/html;
+          index  index.html index.htm;
+      }
+      location = /50x.html {
+          root   /usr/share/nginx/html;
+      }
+    }
+  index.html: |+
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>custom index!</title>
+    </head>
+    <body>
+    <h1>欢迎!</h1>
+    <p>成功到达定制页面.</p>
+    </body>
+    </html>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-tls-demo
+  labels:
+    app.kubernetes.io/name: nginx-tls-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nginx-tls-demo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nginx-tls-demo
+    spec:
+      # serviceAccountName: nginx-tls-demo
+      containers:
+        - name: nginx-tls-demo
+          image: docker.io/nginx:1.25.4
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+            - containerPort: 443
+              name: https
+              protocol: TCP
+          # env:
+          #   - name: OPERATOR_NAMESPACE
+          #     valueFrom:
+          #       fieldRef:
+          #         fieldPath: metadata.namespace
+          #   - name: HOST_IP
+          #     valueFrom:
+          #       fieldRef:
+          #         fieldPath: status.hostIP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: nginx-tls-demo-config-volume
+              mountPath: /etc/nginx/conf.d
+            - name: keystore
+              mountPath: /certs
+            - name: html
+              mountPath: /usr/share/nginx/html
+          livenessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            httpGet:
+              path: /
+              port: http
+          startupProbe:
+            failureThreshold: 30
+            periodSeconds: 10
+            httpGet:
+              path: /
+              port: http
+        
+      volumes:
+        - name: nginx-tls-demo-config-volume
+          configMap:
+            name: nginx-tls-demo-config
+            items:
+              # key是secret中的key, path是挂载到文件中的名称
+              - key: nginx-tls.conf
+                path: nginx-tls.conf
+        - name: keystore
+          secret:
+            secretName: nginx-tls-server-cert
+            items:
+            - key: tls.crt
+              path: tls.crt
+            - key: tls.key
+              path: tls.key
+            - key: ca.crt
+              path: ca.crt
+        - name: html
+          configMap:
+            name: nginx-tls-demo-config
+            items:
+            - key: index.html
+              path: index.html

@@ -1,0 +1,96 @@
+# 定义一个root ca 机构的签名请求
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer-ca
+spec:
+  # 根证书是自签名的
+  selfSigned: {}
+---
+# 定义 root ca 证书
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: root-selfsigned-ca
+spec:
+  # 表示这是一个CA证书
+  isCA: true
+  commonName: root-selfsigned-ca
+  # 证书存放地址为当前命名空间下的 secret 
+  secretName: root-ca-secret
+  # privateKey:
+  #   algorithm: ECDSA
+  #   size: 256
+  issuerRef:
+    name: selfsigned-issuer-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# 自定义一个Issuer, 抽象了 ca机构和证书签名请求,这里配置了自签名请求, 这里也可以使用root ca的 Issuer（ClusterIssuer），不同的Issuer主要是便于管理
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: nginx-tls-demo-issuer
+spec:
+  # 这里认证机构不是自签名的, 而是使用签名自签名的ca来签名, 引用root ca 的secret, 这里引用的是前面生成的证书，
+  # 也可以引用以及存在的 secret, 该secret必须是 type: kubernetes.io/tls, 并且包含 ca.crt(签名的公钥), tls.crt(公钥，一般和 ca.crt相同), tls.key(私钥)
+  ca:
+    secretName: root-ca-secret
+---
+# 定义服务端证书, 并使用上述 Issuer 签名
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nginx-tls-server-cert
+spec:
+  dnsNames:
+  # 如果这里包含了命名空间, 则指定 service 必须包含在命名空间中
+  - nginx-tls-server
+  - nginx-tls-server.mw
+  - nginx-tls-server.mw.svc
+  - nginx-tls-server.mw.svc.cluster.local
+  # keystores:
+  #   pkcs12:
+  #     create: true
+  #     # 这里是打开 keystore 文件的密码
+  #     passwordSecretRef:
+  #       name: nginx-tls-server-pkcs12-secret
+  #       key: password
+  usages:
+    - server auth
+    - client auth
+  issuerRef:
+    kind: Issuer
+    name: nginx-tls-demo-issuer
+  commonName: nginx demo
+  # 这里是存储各种证书的 secret
+  secretName: nginx-tls-server-cert
+---
+# 定义客户端证书, 并使用上述 Issuer 签名
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nginx-tls-client-cert
+spec:
+  dnsNames:
+  # 如果这里包含了命名空间, 则指定 service 必须包含在命名空间中
+  - nginx-tls-client-service
+  - nginx-tls-client-service.mw
+  - nginx-tls-client-service.mw.svc
+  - nginx-tls-client-service.mw.svc.cluster.local
+  # keystores:
+  #   pkcs12:
+  #     create: true
+  #     # 这里是打开 keystore 文件的密码
+  #     passwordSecretRef:
+  #       name: nginx-tls-client-pkcs12-secret
+  #       key: password
+  usages:
+    # 只能做客户端认证
+    - client auth
+  issuerRef:
+    kind: Issuer
+    name: nginx-tls-demo-issuer
+  commonName: nginx demo
+  # 这里是存储各种证书的 secret
+  secretName: nginx-tls-client-cert

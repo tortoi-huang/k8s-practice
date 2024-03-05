@@ -24,3 +24,8 @@
 
 /mw/mongodb-sharded/mongodb-sharded/*
 /mw/mongodb-sharded/*.tgz
+
+
+
+/mw/flink/operator/flink-kubernetes-operator/*
+/mw/flink/operator/*.tgz
