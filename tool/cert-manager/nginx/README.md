@@ -13,6 +13,7 @@
 ```shell
 # 创建根证书, 服务端证书和客户端证书
 kubectl -n mw apply -f nginx-demo-cert.yaml
+# kubectl -n mw delete -f nginx-demo-cert.yaml
 
 # 查看安装结果
 kubectl get ClusterIssuer
@@ -29,7 +30,6 @@ kubectl -n mw get secret/root-ca-secret -o yaml
 ```shell
 kubectl -n mw apply -f nginx-demo-server.yaml
 
-
 # 登录到 nginx pod, 或者登录到其他挂载了证书的pod
 # http访问正常
 curl http://nginx-tls-server
@@ -44,4 +44,18 @@ curl --cacert /certs/ca.crt --cert /certs/tls.crt --key /certs/tls.key https://n
 
 # 访问失败，域名不匹配
 curl --cacert /certs/ca.crt --cert /certs/tls.crt --key /certs/tls.key https://localhost
+
+# 启动客户端访问
+kubectl -n mw apply -f nginx-demo-client.yaml
+
+# 非 https 访问成功
+curl http://nginx-tls-client
+
+# mtls 访问失败, 原因是我们定制客户端证书时, 限定该证书只能用于客户端认证
+curl --cacert /certs/ca.crt --cert /certs/tls.crt --key /certs/tls.key https://nginx-tls-client
+# mtls 访问服务端成功,
+curl --cacert /certs/ca.crt --cert /certs/tls.crt --key /certs/tls.key https://nginx-tls-server
+curl --cacert /certs/ca.crt --cert /certs/tls.crt --key /certs/tls.key https://nginx-tls-server.mw
+curl --cacert /certs/ca.crt --cert /certs/tls.crt --key /certs/tls.key https://nginx-tls-server.mw.svc
+curl --cacert /certs/ca.crt --cert /certs/tls.crt --key /certs/tls.key https://nginx-tls-server.mw.svc.cluster.local
 ```

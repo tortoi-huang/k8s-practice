@@ -25,6 +25,10 @@ spec:
     name: selfsigned-issuer-ca
     kind: ClusterIssuer
     group: cert-manager.io
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: nginx-tls-demo
+      app.kubernetes.io/component: ca
 ---
 # 自定义一个Issuer, 抽象了 ca机构和证书签名请求,这里配置了自签名请求, 这里也可以使用root ca的 Issuer（ClusterIssuer），不同的Issuer主要是便于管理
 apiVersion: cert-manager.io/v1
@@ -65,6 +69,10 @@ spec:
   commonName: nginx demo
   # 这里是存储各种证书的 secret
   secretName: nginx-tls-server-cert
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: nginx-tls-demo
+      app.kubernetes.io/component: server
 ---
 # 定义客户端证书, 并使用上述 Issuer 签名
 apiVersion: cert-manager.io/v1
@@ -74,10 +82,10 @@ metadata:
 spec:
   dnsNames:
   # 如果这里包含了命名空间, 则指定 service 必须包含在命名空间中
-  - nginx-tls-client-service
-  - nginx-tls-client-service.mw
-  - nginx-tls-client-service.mw.svc
-  - nginx-tls-client-service.mw.svc.cluster.local
+  - nginx-tls-client
+  - nginx-tls-client.mw
+  - nginx-tls-client.mw.svc
+  - nginx-tls-client.mw.svc.cluster.local
   # keystores:
   #   pkcs12:
   #     create: true
@@ -86,7 +94,7 @@ spec:
   #       name: nginx-tls-client-pkcs12-secret
   #       key: password
   usages:
-    # 只能做客户端认证
+    # 只能做客户端认证, 用来部署nginx服务tls将不会生效
     - client auth
   issuerRef:
     kind: Issuer
@@ -94,3 +102,7 @@ spec:
   commonName: nginx demo
   # 这里是存储各种证书的 secret
   secretName: nginx-tls-client-cert
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: nginx-tls-demo
+      app.kubernetes.io/component: client

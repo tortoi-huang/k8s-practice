@@ -14,14 +14,16 @@ spec:
     name: http
   selector:
     app.kubernetes.io/name: nginx-tls-demo
+    app.kubernetes.io/component: server
 ---
 # 配置nginx, 使用tls
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nginx-tls-demo-config
+  name: nginx-tls-server-config
   labels:
     app.kubernetes.io/name: nginx-tls-demo
+    app.kubernetes.io/component: server
 data:
   nginx-tls.conf: |+
     server {
@@ -68,7 +70,7 @@ data:
     <title>custom index!</title>
     </head>
     <body>
-    <h1>欢迎!</h1>
+    <h1>欢迎,这是服务端!</h1>
     <p>成功到达定制页面.</p>
     </body>
     </html>
@@ -76,22 +78,25 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-tls-demo
+  name: nginx-tls-demo-server
   labels:
     app.kubernetes.io/name: nginx-tls-demo
+    app.kubernetes.io/component: server
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: nginx-tls-demo
+      app.kubernetes.io/component: server
   template:
     metadata:
       labels:
         app.kubernetes.io/name: nginx-tls-demo
+        app.kubernetes.io/component: server
     spec:
       # serviceAccountName: nginx-tls-demo
       containers:
-        - name: nginx-tls-demo
+        - name: nginx-tls-demo-server
           image: docker.io/nginx:1.25.4
           imagePullPolicy: IfNotPresent
           ports:
@@ -118,7 +123,7 @@ spec:
               cpu: 500m
               memory: 1Gi
           volumeMounts:
-            - name: nginx-tls-demo-config-volume
+            - name: nginx-tls-server-config-volume
               mountPath: /etc/nginx/conf.d
             - name: keystore
               mountPath: /certs
@@ -138,9 +143,9 @@ spec:
               port: http
         
       volumes:
-        - name: nginx-tls-demo-config-volume
+        - name: nginx-tls-server-config-volume
           configMap:
-            name: nginx-tls-demo-config
+            name: nginx-tls-server-config
             items:
               # key是secret中的key, path是挂载到文件中的名称
               - key: nginx-tls.conf
@@ -157,7 +162,7 @@ spec:
               path: ca.crt
         - name: html
           configMap:
-            name: nginx-tls-demo-config
+            name: nginx-tls-server-config
             items:
             - key: index.html
               path: index.html
