@@ -1,0 +1,34 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tc1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tc1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tc1
+    spec:
+      # serviceAccountName: tc1
+      containers:
+        - name: tc1
+          image: docker.io/library/tomcat:9-jdk8
+          imagePullPolicy: IfNotPresent
+          # env:
+          #   - name: JAVA_OPTS
+          #     value: -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=75.0 -XX:MinRAMPercentage=75.0
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
