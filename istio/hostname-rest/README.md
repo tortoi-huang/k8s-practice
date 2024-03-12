@@ -61,6 +61,7 @@ kubectl leble namespace tutorial istio-injection=enabled
 
 ## 构建测试用的 docker镜像
 ```shell
+# 如果不想安装docker可以安装 buildah 只有镜像管理功能，没有运行功能也没有守护进程,不需要root权限的工具
 docker buildx b hostname/ -t hostname-rest-svc:0.0.1
 # docker rmi hostname-rest-svc:0.0.1
 
