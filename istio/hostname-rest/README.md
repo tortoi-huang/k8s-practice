@@ -1,6 +1,6 @@
 # istio-practice
-这里构建两个微服务测试istio: hostname和proxy
-通过kubernetes网关调用 proxy， proxy调用 hostname,
+这里构建两个微服务测试 istio: hostname 和 proxy
+通过kubernetes网关调用 proxy, proxy 调用 hostname,
 hostname服务有三个版本的实例运行，v1版本有30%概率返回400，20%概率返回500； v2版本有20%概率返回400， v3版本只会返回200
 
 ## 前提环境准备
@@ -53,7 +53,7 @@ spec:
         # 允许跨命名空间
         from: All
 ```
-3. 创建一个命名空间 tutorial, 并标记为istio自动注入
+3. 创建一个命名空间 tutorial, 并标记为 istio 自动注入
 ```shell
 kubectl create namespace tutorial
 kubectl leble namespace tutorial istio-injection=enabled

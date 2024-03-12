@@ -45,11 +45,11 @@ def get_hostname():
     return jsonify({'version': os.getenv("my_version"), 'statu_code': st_code, 'endUser': end_user, 'queryString': query_str, 'hostname': hostname}), st_code
     
 
-# 运行flask应用，监听5000端口
+# 运行flask应用，监听端口
 if __name__ == '__main__':
     # 获取命令行参数列表，第一个元素是文件名，第二个元素是端口号（如果有）
     args = sys.argv
-    # 如果参数列表长度大于1，说明提供了端口号，否则使用默认值5000
+    # 如果参数列表长度大于1，说明提供了端口号，否则使用默认值
     nport = int(args[1]) if len(args) > 1 else 80
     # 启动flask应用，监听指定的端口号
     app.run(port=nport)
