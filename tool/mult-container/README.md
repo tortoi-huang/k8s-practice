@@ -13,28 +13,44 @@ kubectl get po
 假设部署的pod名字为 muti-container-85f5c8bcc5-n92ln
 进入pod的contianer查看文件,确认挂载文件不冲突，
 ```shell
-kubectl extc -it muti-container-85f5c8bcc5-n92ln -c muti-container-nginx-c1
+kubectl extc -it muti-container-85f5c8bcc5-n92ln -c muti-container-nginx-c1 -- sh
 # 查看容器1 的配置文件正确为 8080 端口
 cat /etc/nginx/conf.d/default.conf
-# 查看环境变量，正确为8080
+# 查看环境变量，正确为8080, 俩容器的环境变量不一样
 env|grep NGINX_PORT
+# 访问任意一个容器都可以通过localhost访问到另外一个容器的进程
+curl http://localhost:8080
+curl http://localhost:8090
 
-kubectl extc -it muti-container-85f5c8bcc5-n92ln -c muti-container-nginx-c2
+kubectl extc -it muti-container-85f5c8bcc5-n92ln -c muti-container-nginx-c2 -- sh
 # 查看容器1 的配置文件正确为 8090端口
 cat /etc/nginx/conf.d/default.conf
-# 查看环境变量，正确为8090
+# 查看环境变量，正确为8090, 俩容器的环境变量不一样
 env|grep NGINX_PORT
+# 访问任意一个容器都可以通过localhost访问到另外一个容器的进程
+curl http://localhost:8080
+curl http://localhost:8090
 ```
 
-附加调制容器查看
+# 附加调制容器查看
 ```shell
 # --target 表示要加入哪个容器的进程空间，没有这个参数会作为独立的进程空间运行，无法查看目标容器的进程信息
 kubectl debug -it muti-container-85f5c8bcc5-n92ln --image=busybox --target muti-container-nginx-c1
 # debug 容器添加后无法删除，只能删除pod， deployment会重新部署新的pod
 
-# 使用top查看目标容器的进程信息
-top
+# 查看不到 --target 容器的环境变量
+env|grep NGINX_PORT
+
+# 没有共享 --target 容器挂载信息
+cat /etc/nginx/conf.d/default.conf
+
+# 显示端口占用情况, 显示8080和8090两个进程, 其中 8080进程号是1, 8090程号没有, 因为8090的进程没有共享在当前的容器中
+netstat -ltp
+
+# 显示容器ip 与kubectl get pod -o wide 看到的ip一致
+ip addr
 ```
+
 在docker宿主机查看dubug容器的运行，发现docker启动容器命令如下：
 ```shell
 docker run --hostname=muti-container-85f5c8bcc5-n92ln \
@@ -62,4 +78,4 @@ docker run --hostname=muti-container-85f5c8bcc5-n92ln \
   --label='io.kubernetes.sandbox.id=5d6feb2559ba5ab7cfe9b13f3c672667382e1d16015cd05e18f48116c79af04b' \
   --runtime=runc -t -d busybox@sha256:5acba83a746c7608ed544dc1533b87c737a0b0fb730301639a0179f9344b1678
 ```
-其中--pid指定了容器的进程空间
+其中 --pid 指定了容器的进程空间
