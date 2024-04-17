@@ -29,3 +29,6 @@
 
 /mw/flink/operator/flink-kubernetes-operator/*
 /mw/flink/operator/*.tgz
+
+/mw/clickhouse/clickhouse/*
+/mw/clickhouse/*.tgz

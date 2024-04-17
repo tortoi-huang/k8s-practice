@@ -1,0 +1,280 @@
+
+## @param shards Number of ClickHouse shards to deploy
+##
+shards: 2
+## @param replicaCount Number of ClickHouse replicas per shard to deploy
+## if keeper enable, same as keeper count, keeper cluster by shards.
+##
+replicaCount: 3
+## @param containerPorts.http ClickHouse HTTP container port
+## @param containerPorts.https ClickHouse HTTPS container port
+## @param containerPorts.tcp ClickHouse TCP container port
+## @param containerPorts.tcpSecure ClickHouse TCP (secure) container port
+## @param containerPorts.keeper ClickHouse keeper TCP container port
+## @param containerPorts.keeperSecure ClickHouse keeper TCP (secure) container port
+## @param containerPorts.keeperInter ClickHouse keeper interserver TCP container port
+## @param containerPorts.mysql ClickHouse MySQL container port
+## @param containerPorts.postgresql ClickHouse PostgreSQL container port
+## @param containerPorts.interserver ClickHouse Interserver container port
+## @param containerPorts.metrics ClickHouse metrics container port
+##
+containerPorts:
+  http: 8123
+  https: 8443
+  tcp: 9000
+  tcpSecure: 9440
+  keeper: 2181
+  keeperSecure: 3181
+  keeperInter: 9444
+  mysql: 9004
+  postgresql: 9005
+  interserver: 9009
+  metrics: 8001
+## ClickHouse resource requests and limits
+## ref: http://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
+## More information: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
+##
+resourcesPreset: "small"
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+## Example:
+resources:
+  requests:
+    cpu: 0.5
+    memory: 128Mi
+  limits:
+    cpu: 4
+    memory: 512Mi
+## Authentication
+## @param auth.username ClickHouse Admin username
+## @param auth.password ClickHouse Admin password
+## @param auth.existingSecret Name of a secret containing the Admin password
+## @param auth.existingSecretKey Name of the key inside the existing secret
+##
+auth:
+  username: clickhouse
+  password: "Ck1234"
+  existingSecret: ""
+  existingSecretKey: ""
+## @param logLevel Logging level
+##
+logLevel: information
+## @section ClickHouse keeper configuration parameters
+## @param keeper.enabled Deploy ClickHouse keeper. Support is experimental.
+##
+keeper:
+  enabled: false
+## @param defaultConfigurationOverrides [string] Default configuration overrides (evaluated as a template)
+##
+defaultConfigurationOverrides: |
+  <clickhouse>
+    <!-- Macros -->
+    <macros>
+      <shard from_env="CLICKHOUSE_SHARD_ID"></shard>
+      <replica from_env="CLICKHOUSE_REPLICA_ID"></replica>
+      <layer>{{ include "common.names.fullname" . }}</layer>
+    </macros>
+    <!-- Log Level -->
+    <logger>
+      <level>{{ .Values.logLevel }}</level>
+    </logger>
+    {{- if or (ne (int .Values.shards) 1) (ne (int .Values.replicaCount) 1)}}
+    <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
+    <remote_servers>
+      <default>
+        {{- $shards := $.Values.shards | int }}
+        {{- range $shard, $e := until $shards }}
+        <shard>
+            {{- $replicas := $.Values.replicaCount | int }}
+            {{- range $i, $_e := until $replicas }}
+            <replica>
+                <host>{{ printf "%s-shard%d-%d.%s.%s.svc.%s" (include "common.names.fullname" $ ) $shard $i (include "clickhouse.headlessServiceName" $) (include "common.names.namespace" $) $.Values.clusterDomain }}</host>
+                <port>{{ $.Values.service.ports.tcp }}</port>
+                <user from_env="CLICKHOUSE_ADMIN_USER"></user>
+                <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
+            </replica>
+            {{- end }}
+        </shard>
+        {{- end }}
+      </default>
+    </remote_servers>
+    {{- end }}
+    {{- if .Values.keeper.enabled }}
+    <!-- keeper configuration -->
+    <keeper_server>
+      {{/*ClickHouse keeper configuration using the helm chart */}}
+      <tcp_port>{{ $.Values.containerPorts.keeper }}</tcp_port>
+      {{- if .Values.tls.enabled }}
+      <tcp_port_secure>{{ $.Values.containerPorts.keeperSecure }}</tcp_port_secure>
+      {{- end }}
+      <server_id from_env="KEEPER_SERVER_ID"></server_id>
+      <log_storage_path>/bitnami/clickhouse/keeper/coordination/log</log_storage_path>
+      <snapshot_storage_path>/bitnami/clickhouse/keeper/coordination/snapshots</snapshot_storage_path>
+
+      <coordination_settings>
+          <operation_timeout_ms>10000</operation_timeout_ms>
+          <session_timeout_ms>30000</session_timeout_ms>
+          <raft_logs_level>trace</raft_logs_level>
+      </coordination_settings>
+
+      <raft_configuration>
+      {{- $nodes := .Values.replicaCount | int }}
+      {{- range $node, $e := until $nodes }}
+      <server>
+        <id>{{ $node | int }}</id>
+        <hostname from_env="{{ printf "KEEPER_NODE_%d" $node }}"></hostname>
+        <port>{{ $.Values.service.ports.keeperInter }}</port>
+      </server>
+      {{- end }}
+      </raft_configuration>
+    </keeper_server>
+    {{- end }}
+    {{- if or .Values.keeper.enabled .Values.zookeeper.enabled .Values.externalZookeeper.servers }}
+    <!-- Zookeeper configuration -->
+    <zookeeper>
+      {{- if or .Values.keeper.enabled }}
+      {{- $nodes := .Values.replicaCount | int }}
+      {{- range $node, $e := until $nodes }}
+      <node>
+        <host from_env="{{ printf "KEEPER_NODE_%d" $node }}"></host>
+        <port>{{ $.Values.service.ports.keeper }}</port>
+      </node>
+      {{- end }}
+      {{- else if .Values.zookeeper.enabled }}
+      {{/* Zookeeper configuration using the helm chart */}}
+      {{- $nodes := .Values.zookeeper.replicaCount | int }}
+      {{- range $node, $e := until $nodes }}
+      <node>
+        <host from_env="{{ printf "KEEPER_NODE_%d" $node }}"></host>
+        <port>{{ $.Values.zookeeper.service.ports.client }}</port>
+      </node>
+      {{- end }}
+      {{- else if .Values.externalZookeeper.servers }}
+      {{/* Zookeeper configuration using an external instance */}}
+      {{- range $node :=.Values.externalZookeeper.servers }}
+      <node>
+        <host>{{ $node }}</host>
+        <port>{{ $.Values.externalZookeeper.port }}</port>
+      </node>
+      {{- end }}
+      {{- end }}
+    </zookeeper>
+    {{- end }}
+    {{- if .Values.tls.enabled }}
+    <!-- TLS configuration -->
+    <tcp_port_secure from_env="CLICKHOUSE_TCP_SECURE_PORT"></tcp_port_secure>
+    <https_port from_env="CLICKHOUSE_HTTPS_PORT"></https_port>
+    <openSSL>
+        <server>
+            {{- $certFileName := default "tls.crt" .Values.tls.certFilename }}
+            {{- $keyFileName := default "tls.key" .Values.tls.certKeyFilename }}
+            <certificateFile>/bitnami/clickhouse/certs/{{$certFileName}}</certificateFile>
+            <privateKeyFile>/bitnami/clickhouse/certs/{{$keyFileName}}</privateKeyFile>
+            <verificationMode>none</verificationMode>
+            <cacheSessions>true</cacheSessions>
+            <disableProtocols>sslv2,sslv3</disableProtocols>
+            <preferServerCiphers>true</preferServerCiphers>
+            {{- if or .Values.tls.autoGenerated .Values.tls.certCAFilename }}
+            {{- $caFileName := default "ca.crt" .Values.tls.certCAFilename }}
+            <caConfig>/bitnami/clickhouse/certs/{{$caFileName}}</caConfig>
+            {{- else }}
+            <loadDefaultCAFile>true</loadDefaultCAFile>
+            {{- end }}
+        </server>
+        <client>
+            <loadDefaultCAFile>true</loadDefaultCAFile>
+            <cacheSessions>true</cacheSessions>
+            <disableProtocols>sslv2,sslv3</disableProtocols>
+            <preferServerCiphers>true</preferServerCiphers>
+            <verificationMode>none</verificationMode>
+            <invalidCertificateHandler>
+                <name>AcceptCertificateHandler</name>
+            </invalidCertificateHandler>
+        </client>
+    </openSSL>
+    {{- end }}
+    {{- if .Values.metrics.enabled }}
+     <!-- Prometheus metrics -->
+     <prometheus>
+        <endpoint>/metrics</endpoint>
+        <port from_env="CLICKHOUSE_METRICS_PORT"></port>
+        <metrics>true</metrics>
+        <events>true</events>
+        <asynchronous_metrics>true</asynchronous_metrics>
+    </prometheus>
+    {{- end }}
+  </clickhouse>
+## @param existingOverridesConfigmap The name of an existing ConfigMap with your custom configuration for ClickHouse
+##
+existingOverridesConfigmap: ""
+## @param initdbScripts Dictionary of initdb scripts
+## Specify dictionary of scripts to be run at first boot
+## Example:
+## initdbScripts:
+##   my_init_script.sh: |
+##      #!/bin/bash
+##      echo "Do something."
+##
+initdbScripts: {}
+## @param initdbScriptsSecret ConfigMap with the initdb scripts (Note: Overrides `initdbScripts`)
+##
+initdbScriptsSecret: ""
+## @param startdbScripts Dictionary of startdb scripts
+## Specify dictionary of scripts to be run on every start
+## Example:
+## startdbScripts:
+##   my_start_script.sh: |
+##      #!/bin/bash
+##      echo "Do something."
+##
+startdbScripts: {}
+## @param startdbScriptsSecret ConfigMap with the startdb scripts (Note: Overrides `startdbScripts`)
+##
+startdbScriptsSecret: ""
+## @param command Override default container command (useful when using custom images)
+##
+command:
+  - /scripts/setup.sh
+
+## Enable persistence using Persistent Volume Claims
+## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+##
+persistence:
+  ## @param persistence.labels Persistent Volume Claim labels
+  ##
+  labels: {}
+  ## @param persistence.accessModes Persistent Volume Access Modes
+  ##
+  accessModes:
+    - ReadWriteOnce
+  ## @param persistence.size Size of data volume
+  ##
+  size: 1Gi
+## @section Zookeeper subchart parameters
+##
+## @param zookeeper.enabled Deploy Zookeeper subchart
+## @param zookeeper.replicaCount Number of Zookeeper instances
+## @param zookeeper.service.ports.client Zookeeper client port
+##
+zookeeper:
+  enabled: true
+  replicaCount: 1
+  service:
+    ports:
+      client: 2181
+  ## @param zookeeper.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+  ## Example:
+  resources:
+    requests:
+      cpu: 0.5
+      memory: 128Mi
+    limits:
+      cpu: 4
+      memory: 512Mi
+## @section Network Policies
+## Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+  ##
+  enabled: false

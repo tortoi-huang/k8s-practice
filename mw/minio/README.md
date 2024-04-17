@@ -50,6 +50,7 @@ kubectl apply -f minio-5.0.15.yaml
 # helm uninstall minio-cluster
 # kubectl delete -f minio-12.13.2.yaml
 kubectl delete -f minio-5.0.15.yaml
+kubectl delete pvc -l app.kubernetes.io/instance=minio-cluster
 ```
 
 ## ingress
