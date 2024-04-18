@@ -161,12 +161,6 @@ data:
                   <user from_env="CLICKHOUSE_ADMIN_USER"></user>
                   <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
               </replica>
-              <replica>
-                  <host>clickhouse-cluster-shard0-2.clickhouse-cluster-headless.mw.svc.cluster.local</host>
-                  <port>9000</port>
-                  <user from_env="CLICKHOUSE_ADMIN_USER"></user>
-                  <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
-              </replica>
           </shard>
           <shard>
               <replica>
@@ -181,12 +175,6 @@ data:
                   <user from_env="CLICKHOUSE_ADMIN_USER"></user>
                   <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
               </replica>
-              <replica>
-                  <host>clickhouse-cluster-shard1-2.clickhouse-cluster-headless.mw.svc.cluster.local</host>
-                  <port>9000</port>
-                  <user from_env="CLICKHOUSE_ADMIN_USER"></user>
-                  <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
-              </replica>
           </shard>
         </default>
       </remote_servers>
@@ -195,6 +183,14 @@ data:
         
         <node>
           <host from_env="KEEPER_NODE_0"></host>
+          <port>2181</port>
+        </node>
+        <node>
+          <host from_env="KEEPER_NODE_1"></host>
+          <port>2181</port>
+        </node>
+        <node>
+          <host from_env="KEEPER_NODE_2"></host>
           <port>2181</port>
         </node>
       </zookeeper>
@@ -402,7 +398,7 @@ metadata:
     app.kubernetes.io/component: zookeeper
     role: zookeeper
 spec:
-  replicas: 1
+  replicas: 3
   revisionHistoryLimit: 10
   podManagementPolicy: Parallel
   selector:
@@ -471,10 +467,10 @@ spec:
             - /scripts/setup.sh
           resources:
             limits:
-              cpu: 4
-              memory: 512Mi
+              cpu: 2
+              memory: 256Mi
             requests:
-              cpu: 0.5
+              cpu: 1
               memory: 128Mi
           env:
             - name: BITNAMI_DEBUG
@@ -506,7 +502,7 @@ spec:
             - name: ZOO_MAX_SESSION_TIMEOUT
               value: "40000"
             - name: ZOO_SERVERS
-              value: clickhouse-cluster-zookeeper-0.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local:2888:3888::1 
+              value: clickhouse-cluster-zookeeper-0.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local:2888:3888::1 clickhouse-cluster-zookeeper-1.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local:2888:3888::2 clickhouse-cluster-zookeeper-2.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local:2888:3888::3 
             - name: ZOO_ENABLE_AUTH
               value: "no"
             - name: ZOO_ENABLE_QUORUM_AUTH
@@ -598,7 +594,7 @@ metadata:
     app.kubernetes.io/component: clickhouse
     shard: "0"
 spec:
-  replicas: 3
+  replicas: 2
   podManagementPolicy: "Parallel"
   selector:
     matchLabels:
@@ -611,7 +607,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a87875cfc164f86f1ac05d90e262217e694a31f979f156be56ad4bcaf3e486d4
+        checksum/config: 3d9814d9ddd08fa966c39b5f0271c637d1403ac1edd46dc443091f58d547bfd4
         checksum/config-extra: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
         checksum/config-users-extra: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
       labels:
@@ -694,14 +690,18 @@ spec:
                   key: admin-password
             - name: KEEPER_NODE_0
               value: clickhouse-cluster-zookeeper-0.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local
+            - name: KEEPER_NODE_1
+              value: clickhouse-cluster-zookeeper-1.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local
+            - name: KEEPER_NODE_2
+              value: clickhouse-cluster-zookeeper-2.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local
           envFrom:
           resources:
             limits:
-              cpu: 4
-              memory: 512Mi
+              cpu: 2
+              memory: 1Gi
             requests:
               cpu: 0.5
-              memory: 128Mi
+              memory: 256Mi
           ports:
             - name: http
               containerPort: 8123
@@ -773,7 +773,7 @@ spec:
           - "ReadWriteOnce"
         resources:
           requests:
-            storage: "1Gi"
+            storage: "2Gi"
 ---
 # Source: clickhouse/templates/statefulset.yaml
 apiVersion: apps/v1
@@ -790,7 +790,7 @@ metadata:
     app.kubernetes.io/component: clickhouse
     shard: "1"
 spec:
-  replicas: 3
+  replicas: 2
   podManagementPolicy: "Parallel"
   selector:
     matchLabels:
@@ -803,7 +803,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a87875cfc164f86f1ac05d90e262217e694a31f979f156be56ad4bcaf3e486d4
+        checksum/config: 3d9814d9ddd08fa966c39b5f0271c637d1403ac1edd46dc443091f58d547bfd4
         checksum/config-extra: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
         checksum/config-users-extra: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
       labels:
@@ -886,14 +886,18 @@ spec:
                   key: admin-password
             - name: KEEPER_NODE_0
               value: clickhouse-cluster-zookeeper-0.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local
+            - name: KEEPER_NODE_1
+              value: clickhouse-cluster-zookeeper-1.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local
+            - name: KEEPER_NODE_2
+              value: clickhouse-cluster-zookeeper-2.clickhouse-cluster-zookeeper-headless.mw.svc.cluster.local
           envFrom:
           resources:
             limits:
-              cpu: 4
-              memory: 512Mi
+              cpu: 2
+              memory: 1Gi
             requests:
               cpu: 0.5
-              memory: 128Mi
+              memory: 256Mi
           ports:
             - name: http
               containerPort: 8123
@@ -965,4 +969,4 @@ spec:
           - "ReadWriteOnce"
         resources:
           requests:
-            storage: "1Gi"
+            storage: "2Gi"
