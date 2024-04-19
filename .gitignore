@@ -32,3 +32,6 @@
 
 /mw/clickhouse/clickhouse/*
 /mw/clickhouse/*.tgz
+
+mw/tdengine/tdengine-3.0.2.tgz
+mw/tdengine/tdengine/*
