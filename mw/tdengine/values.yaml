@@ -69,7 +69,7 @@ taoscfg:
   CLUSTER: "1"
 
   # number of replications, for cluster only
-  TAOS_REPLICA: "1"
+  TAOS_REPLICA: "3"
 
 
   #

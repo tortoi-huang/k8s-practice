@@ -5,14 +5,14 @@ kind: ConfigMap
 metadata:
   name: tdtest-tdengine-taoscfg
   labels:
-    helm.sh/chart: tdengine-3.0.2
+    helm.sh/chart: tdengine-3.2.3
     app.kubernetes.io/name: tdengine
     app.kubernetes.io/instance: tdtest
-    app.kubernetes.io/version: "3.0.2.2"
+    app.kubernetes.io/version: "3.2.3.0"
     app.kubernetes.io/managed-by: Helm
 data:
   CLUSTER: "1"
-  TAOS_REPLICA: "1"
+  TAOS_REPLICA: "3"
 ---
 # Source: tdengine/templates/service.yaml
 apiVersion: v1
@@ -20,10 +20,10 @@ kind: Service
 metadata:
   name: tdtest-tdengine
   labels:
-    helm.sh/chart: tdengine-3.0.2
+    helm.sh/chart: tdengine-3.2.3
     app.kubernetes.io/name: tdengine
     app.kubernetes.io/instance: tdtest
-    app.kubernetes.io/version: "3.0.2.2"
+    app.kubernetes.io/version: "3.2.3.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -76,10 +76,10 @@ kind: StatefulSet
 metadata:
   name: tdtest-tdengine
   labels:
-    helm.sh/chart: tdengine-3.0.2
+    helm.sh/chart: tdengine-3.2.3
     app.kubernetes.io/name: tdengine
     app.kubernetes.io/instance: tdtest
-    app.kubernetes.io/version: "3.0.2.2"
+    app.kubernetes.io/version: "3.2.3.0"
     app.kubernetes.io/managed-by: Helm
     app: taosd
 spec:
