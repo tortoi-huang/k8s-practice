@@ -35,3 +35,6 @@
 
 mw/tdengine/tdengine-3.0.2.tgz
 mw/tdengine/tdengine/*
+
+mw/redis/redis-*.tgz
+mw/redis/redis/*

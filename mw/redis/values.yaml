@@ -1,0 +1,78 @@
+## @param architecture Redis&reg; architecture. Allowed values: `standalone` or `replication`
+##
+architecture: replication
+## Redis&reg; Authentication parameters
+## ref: https://github.com/bitnami/containers/tree/main/bitnami/redis#setting-the-server-password-on-first-run
+##
+auth:
+  ## @param auth.enabled Enable password authentication
+  ##
+  enabled: true
+  ## @param auth.sentinel Enable password authentication on sentinels too
+  ##
+  sentinel: true
+  ## @param auth.password Redis&reg; password
+  ## Defaults to a random 10-character alphanumeric string if not set
+  ##
+  password: "Redis123"
+## @param commonConfiguration [string] Common configuration to be added into the ConfigMap
+## ref: https://redis.io/topics/config
+##
+commonConfiguration: |-
+  # Enable AOF https://redis.io/topics/persistence#append-only-file
+  appendonly yes
+  # Disable RDB persistence, AOF persistence already enabled.
+  save ""
+## @section Redis&reg; master configuration parameters
+##
+master:
+  ## @param master.count Number of Redis&reg; master instances to deploy (experimental, requires additional configuration)
+  ##
+  count: 1
+  ## @param master.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+  ## Example:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 128Mi
+    limits:
+      cpu: 1
+      memory: 384Mi
+## @section Redis&reg; replicas configuration parameters
+##
+replica:
+  ## @param replica.replicaCount Number of Redis&reg; replicas to deploy
+  ##
+  replicaCount: 3
+  ## @param replica.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+  ## Example:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 128Mi
+    limits:
+      cpu: 1
+      memory: 384Mi
+
+sentinel:
+  ## @param sentinel.enabled Use Redis&reg; Sentinel on Redis&reg; pods.
+  ## IMPORTANT: this will disable the master and replicas services and
+  ## create a single Redis&reg; service exposing both the Redis and Sentinel ports
+  ##
+  enabled: true
+  ## @param sentinel.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+  ## Example:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 128Mi
+    limits:
+      cpu: 1
+      memory: 384Mi
+## Network Policy configuration
+## ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources
+  ##
+  enabled: false
