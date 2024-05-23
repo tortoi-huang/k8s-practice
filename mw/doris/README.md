@@ -25,4 +25,4 @@ helm template doris-cluster doris-repo/doris -n mw --version 1.5.2  > doris-clus
 ```
 
 ## 手工安装
-参考[手动安装](./deploy/export/README.md "通过导出文件手动安装")
+参考[手动安装](./deploy/README.md "通过导出文件手动安装")
