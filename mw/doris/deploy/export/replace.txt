@@ -1,0 +1,29 @@
+^(\s+)updateStrategy:\n(\1\s+.+\n)+
+
+^(\s+)annotations:\n(\1\s+.+\n)+
+
+^(\s+)namespace:.*\n(\1[\s-]+.+\n)*
+
+^(\s+)creationTimestamp:.*\n(\1[\s-]+.+\n)*
+^(\s+)resourceVersion:.*\n(\1[\s-]+.+\n)*
+^(\s+)uid:.*\n(\1[\s-]+.+\n)*
+^(\s+)clusterIPs:.*\n(\1[\s-]+.+\n)*
+^(\s+)internalTrafficPolicy:.*\n(\1[\s-]+.+\n)*
+^(\s+)ipFamilies:.*\n(\1[\s-]+.+\n)*
+^(\s+)ipFamilyPolicy:.*\n(\1[\s-]+.+\n)*
+^(\s+)sessionAffinity:.*\n(\1[\s-]+.+\n)*
+^([ \t]*)status:.*\n(\1[ -]+.+\n)*
+
+^([ \t]*)sessionAffinityConfig:.*\n(\1[ -]+.+\n)*
+^([ \t]*)generation:.*\n(\1[ -]+.+\n)*
+^([ \t]*)persistentVolumeClaimRetentionPolicy:.*\n(\1[ -]+.+\n)*
+^([ \t]*)revisionHistoryLimit:.*\n(\1[ -]+.+\n)*
+^([ \t]*)affinity:.*\n(\1[ -]+.+\n)*
+^([ \t]*)schedulerName:.*\n(\1[ -]+.+\n)*
+^([ \t]*)dnsPolicy:.*\n(\1[ -]+.+\n)*
+^([ \t]*)restartPolicy:.*\n(\1[ -]+.+\n)*
+^([ \t]*)securityContext:.*\n(\1[ -]+.+\n)*
+^([ \t]*)terminationMessagePath:.*\n(\1[ -]+.+\n)*
+^([ \t]*)terminationMessagePolicy:.*\n(\1[ -]+.+\n)*
+
+^(\s+)clusterIP: [\d.]+\n(\1[\s-]+.+\n)*

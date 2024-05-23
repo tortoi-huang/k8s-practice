@@ -1,0 +1,372 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: doriscluster-helm
+    # app.doris.service/role: access
+    app.kubernetes.io/component: fe
+  name: doriscluster-helm-fe-service
+spec:
+  ports:
+  - name: http-port
+    port: 8030
+    protocol: TCP
+    targetPort: 8030
+  - name: rpc-port
+    port: 9020
+    protocol: TCP
+    targetPort: 9020
+  - name: query-port
+    port: 9030
+    protocol: TCP
+    targetPort: 9030
+  - name: edit-log-port
+    port: 9010
+    protocol: TCP
+    targetPort: 9010
+  selector:
+    app.kubernetes.io/name: doriscluster-helm-fe
+    app.kubernetes.io/component: fe
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: doriscluster-helm
+    # app.doris.service/role: internal
+    app.kubernetes.io/component: fe
+  name: doriscluster-helm-fe-internal
+spec:
+  clusterIP: None
+  ports:
+  - name: query-port
+    port: 9030
+    protocol: TCP
+    targetPort: 9030
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: doriscluster-helm-fe
+    app.kubernetes.io/component: fe
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: doriscluster-helm
+    app.kubernetes.io/component: fe
+  name: doriscluster-helm-fe
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: doriscluster-helm-fe
+      app.kubernetes.io/component: fe
+  serviceName: doriscluster-helm-fe-internal
+  template:
+    metadata:
+      labels:
+        app.doris.cluster: doriscluster-helm
+        app.kubernetes.io/name: doriscluster-helm-fe
+        app.kubernetes.io/component: fe
+      name: doriscluster-helm-fe
+    spec:
+      containers:
+      - args:
+        - $(ENV_FE_ADDR)
+        command:
+        - /opt/apache-doris/fe_entrypoint.sh
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: CONFIGMAP_MOUNT_PATH
+          value: /etc/doris
+        - name: USER
+          value: root
+        - name: DORIS_ROOT
+          value: /opt/apache-doris
+        - name: ENV_FE_ADDR
+          value: doriscluster-helm-fe-service
+        - name: FE_QUERY_PORT
+          value: "9030"
+        - name: ELECT_NUMBER
+          value: "3"
+        image: selectdb/doris.fe-ubuntu:2.0.3
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /opt/apache-doris/fe_prestop.sh
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 80
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 9030
+          timeoutSeconds: 180
+        name: fe
+        ports:
+        - containerPort: 8030
+          name: http-port
+          protocol: TCP
+        - containerPort: 9020
+          name: rpc-port
+          protocol: TCP
+        - containerPort: 9030
+          name: query-port
+          protocol: TCP
+        - containerPort: 9010
+          name: edit-log-port
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/health
+            port: 8030
+            scheme: HTTP
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "2"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 500Mi
+        startupProbe:
+          failureThreshold: 60
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 9030
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /etc/podinfo
+          name: podinfo
+        - mountPath: /opt/apache-doris/fe/doris-meta
+          name: fe-meta
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: fe-meta
+      - downwardAPI:
+          defaultMode: 420
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.labels
+            path: labels
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.annotations
+            path: annotations
+        name: podinfo
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: doriscluster-helm
+    # app.doris.service/role: access
+    app.kubernetes.io/component: be
+  name: doriscluster-helm-be-service
+spec:
+  ports:
+  - name: be-port
+    port: 9060
+    protocol: TCP
+    targetPort: 9060
+  - name: webserver-port
+    port: 8040
+    protocol: TCP
+    targetPort: 8040
+  - name: heartbeat-port
+    port: 9050
+    protocol: TCP
+    targetPort: 9050
+  - name: brpc-port
+    port: 8060
+    protocol: TCP
+    targetPort: 8060
+  selector:
+    app.kubernetes.io/name: doriscluster-helm-be
+    app.kubernetes.io/component: be
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: doriscluster-helm
+    # app.doris.service/role: internal
+    app.kubernetes.io/component: be
+  name: doriscluster-helm-be-internal
+spec:
+  clusterIP: None
+  ports:
+  - name: heartbeat-port
+    port: 9050
+    protocol: TCP
+    targetPort: 9050
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: doriscluster-helm-be
+    app.kubernetes.io/component: be
+  type: ClusterIP
+  
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: doriscluster-helm
+    app.kubernetes.io/component: be
+  name: doriscluster-helm-be
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: doriscluster-helm-be
+      app.kubernetes.io/component: be
+  serviceName: doriscluster-helm-be-internal
+  template:
+    metadata:
+      labels:
+        app.doris.cluster: doriscluster-helm
+        app.kubernetes.io/name: doriscluster-helm-be
+        app.kubernetes.io/component: be
+      name: doriscluster-helm-be
+    spec:
+      containers:
+      - args:
+        - $(ENV_FE_ADDR)
+        command:
+        - /opt/apache-doris/be_entrypoint.sh
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: CONFIGMAP_MOUNT_PATH
+          value: /etc/doris
+        - name: USER
+          value: root
+        - name: DORIS_ROOT
+          value: /opt/apache-doris
+        - name: ENV_FE_ADDR
+          value: doriscluster-helm-fe-service
+        - name: FE_QUERY_PORT
+          value: "9030"
+        image: selectdb/doris.be-ubuntu:2.0.3
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /opt/apache-doris/be_prestop.sh
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 80
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 9050
+          timeoutSeconds: 180
+        name: be
+        ports:
+        - containerPort: 9060
+          name: be-port
+          protocol: TCP
+        - containerPort: 8040
+          name: webserver-port
+          protocol: TCP
+        - containerPort: 9050
+          name: heartbeat-port
+          protocol: TCP
+        - containerPort: 8060
+          name: brpc-port
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/health
+            port: 8040
+            scheme: HTTP
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "2"
+            memory: 2Gi
+          requests:
+            cpu: "1"
+            memory: 500Mi
+        startupProbe:
+          failureThreshold: 60
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 9050
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /etc/podinfo
+          name: podinfo
+        - mountPath: /opt/apache-doris/be/storage
+          name: be-storage
+      volumes:
+      - emptyDir: {}
+        name: be-storage
+      - downwardAPI:
+          defaultMode: 420
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.labels
+            path: labels
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.annotations
+            path: annotations
+        name: podinfo

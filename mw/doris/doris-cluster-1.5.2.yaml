@@ -1,0 +1,36 @@
+---
+# Source: doris/templates/doriscluster.yaml
+# This yaml have dorisCluster CRD all fields. The yaml only for reference how to config, not for deploy on kubernetes.
+
+apiVersion: doris.selectdb.com/v1
+kind: DorisCluster
+metadata:
+  name: doriscluster-helm
+  # namespace: mw
+  labels:
+    app.kubernetes.io/name: doriscluster
+    app.kubernetes.io/instance: doriscluster-helm
+    app.kubernetes.io/part-of: doris-operator
+spec:
+  feSpec:
+    replicas: 3
+    image: selectdb/doris.fe-ubuntu:2.0.3
+    service:
+      type: ClusterIP
+    requests:
+      cpu: 1
+      memory: 500Mi
+    limits:
+      cpu: 2
+      memory: 2Gi
+  beSpec:
+    replicas: 3
+    image: selectdb/doris.be-ubuntu:2.0.3
+    service:
+      type: ClusterIP
+    requests:
+      cpu: 1
+      memory: 500Mi
+    limits:
+      cpu: 2
+      memory: 2Gi

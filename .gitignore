@@ -38,3 +38,7 @@ mw/tdengine/tdengine/*
 
 mw/redis/redis-*.tgz
 mw/redis/redis/*
+
+mw/doris/temp
+mw/doris/doris*.tgz
+mw/doris/doris
