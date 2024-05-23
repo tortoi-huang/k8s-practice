@@ -1,4 +1,4 @@
-
+# 02doris-be.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -59,7 +59,7 @@ metadata:
     app.kubernetes.io/component: be
   name: doriscluster-helm-be
 spec:
-  replicas: 5
+  replicas: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: doriscluster-helm-be
