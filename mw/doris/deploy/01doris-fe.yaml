@@ -8,22 +8,22 @@ metadata:
   name: doriscluster-helm-fe-service
 spec:
   ports:
-  - name: http-port
-    port: 8030
-    protocol: TCP
-    targetPort: 8030
-  - name: rpc-port
-    port: 9020
-    protocol: TCP
-    targetPort: 9020
-  - name: query-port
-    port: 9030
-    protocol: TCP
-    targetPort: 9030
-  - name: edit-log-port
-    port: 9010
-    protocol: TCP
-    targetPort: 9010
+    - name: http-port
+      port: 8030
+      protocol: TCP
+      targetPort: 8030
+    - name: rpc-port
+      port: 9020
+      protocol: TCP
+      targetPort: 9020
+    - name: query-port
+      port: 9030
+      protocol: TCP
+      targetPort: 9030
+    - name: edit-log-port
+      port: 9010
+      protocol: TCP
+      targetPort: 9010
   selector:
     app.kubernetes.io/name: doriscluster-helm-fe
     app.kubernetes.io/component: fe
@@ -40,10 +40,10 @@ metadata:
 spec:
   clusterIP: None
   ports:
-  - name: query-port
-    port: 9030
-    protocol: TCP
-    targetPort: 9030
+    - name: query-port
+      port: 9030
+      protocol: TCP
+      targetPort: 9030
   publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: doriscluster-helm-fe
@@ -77,49 +77,51 @@ spec:
     spec:
       containers:
         - args:
-          - $(ENV_FE_ADDR)
+            - $(ENV_FE_ADDR)
           command:
-          - /opt/apache-doris/fe_entrypoint.sh
+            - bash
+            - -x
+            - /opt/apache-doris/fe_entrypoint.sh
           env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: POD_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.podIP
-          - name: HOST_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.hostIP
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.namespace
-          - name: CONFIGMAP_MOUNT_PATH
-            value: /etc/doris
-          - name: USER
-            value: root
-          - name: DORIS_ROOT
-            value: /opt/apache-doris
-          - name: ENV_FE_ADDR
-            value: doriscluster-helm-fe-service
-          - name: FE_QUERY_PORT
-            value: "9030"
-          - name: ELECT_NUMBER
-            value: "3"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: CONFIGMAP_MOUNT_PATH
+              value: /etc/doris
+            - name: USER
+              value: root
+            - name: DORIS_ROOT
+              value: /opt/apache-doris
+            - name: ENV_FE_ADDR
+              value: doriscluster-helm-fe-service
+            - name: FE_QUERY_PORT
+              value: "9030"
+            - name: ELECT_NUMBER
+              value: "3"
           image: selectdb/doris.fe-ubuntu:2.0.3
           imagePullPolicy: IfNotPresent
           lifecycle:
             preStop:
               exec:
                 command:
-                - /opt/apache-doris/fe_prestop.sh
+                  - /opt/apache-doris/fe_prestop.sh
           livenessProbe:
             failureThreshold: 3
             initialDelaySeconds: 80
@@ -130,18 +132,18 @@ spec:
             timeoutSeconds: 180
           name: fe
           ports:
-          - containerPort: 8030
-            name: http-port
-            protocol: TCP
-          - containerPort: 9020
-            name: rpc-port
-            protocol: TCP
-          - containerPort: 9030
-            name: query-port
-            protocol: TCP
-          - containerPort: 9010
-            name: edit-log-port
-            protocol: TCP
+            - containerPort: 8030
+              name: http-port
+              protocol: TCP
+            - containerPort: 9020
+              name: rpc-port
+              protocol: TCP
+            - containerPort: 9030
+              name: query-port
+              protocol: TCP
+            - containerPort: 9010
+              name: edit-log-port
+              protocol: TCP
           readinessProbe:
             failureThreshold: 3
             httpGet:
@@ -166,43 +168,51 @@ spec:
               port: 9030
             timeoutSeconds: 1
           volumeMounts:
-          - mountPath: /etc/podinfo
-            name: podinfo
-          - mountPath: /opt/apache-doris/fe/doris-meta
-            name: fe-meta
-          - mountPath: /opt/apache-doris/fe/log
-            name: fe-log
+            - mountPath: /etc/podinfo
+              name: podinfo
+            - mountPath: /opt/apache-doris/fe/doris-meta
+              name: fe-meta
+            - mountPath: /opt/apache-doris/fe/log
+              name: fe-log
       terminationGracePeriodSeconds: 30
       volumes:
-      # - emptyDir: {}
-      #   name: fe-meta
-      - downwardAPI:
-          defaultMode: 420
-          items:
-          - fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.labels
-            path: labels
-          - fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.annotations
-            path: annotations
-        name: podinfo
+        # - emptyDir: {}
+        #   name: fe-meta
+        - downwardAPI:
+            defaultMode: 420
+            items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.labels
+                path: labels
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.annotations
+                path: annotations
+          name: podinfo
   # updateStrategy:
   #   rollingUpdate:
   #     maxUnavailable: "100%"
   volumeClaimTemplates:
     - metadata:
         name: fe-meta
+        labels:
+          app.doris.cluster: doriscluster-helm
+          app.kubernetes.io/name: doriscluster-helm-fe
+          app.kubernetes.io/component: fe
       spec:
-        accessModes: [ "ReadWriteOnce" ]
+        accessModes: ["ReadWriteOnce"]
         resources:
           requests:
             storage: 2Gi
     - metadata:
         name: fe-log
+        labels:
+          app.doris.cluster: doriscluster-helm
+          app.kubernetes.io/name: doriscluster-helm-fe
+          app.kubernetes.io/component: fe
       spec:
-        accessModes: [ "ReadWriteOnce" ]
+        accessModes: ["ReadWriteOnce"]
         resources:
           requests:
             storage: 2Gi

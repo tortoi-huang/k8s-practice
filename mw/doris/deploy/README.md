@@ -10,8 +10,7 @@ kubectl apply -f 01doris-fe.yaml
 kubectl apply -f 02doris-be.yaml
 
 # 进入一个节点操作数据
-kubectl exec -it pod/doriscluster-helm-fe-2 -- sh
-mysql -uroot -h127.0.0.1 -P9030
+kubectl exec -it pod/doriscluster-helm-fe-0 -- mysql -uroot -h127.0.0.1 -P9030
 # 执行 test.sql中的sql插入数据
 ```
 
