@@ -49,7 +49,6 @@ spec:
     app.kubernetes.io/name: doriscluster-helm-fe
     app.kubernetes.io/component: fe
   type: ClusterIP
-
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -65,7 +64,8 @@ spec:
       app.kubernetes.io/name: doriscluster-helm-fe
       app.kubernetes.io/component: fe
   serviceName: doriscluster-helm-fe-internal
-  # 并行启动， 因为要等待选举master，逐个启动则第一个pod要等待选举完成再启动第二个pod是不可能的事情
+  # FIXME 首次启动需要串行启动，因为第一个启动完成的要作为master节点, 而后续启动的节点才能指定master的地址
+  # 非首次启动需要并行启动， 因为如果第一个节点挂掉并且数据丢失，那么它启动会作为一个新节点，但是又处于第一启动顺位，无法加入集群，从而作为单独集群启动，后续原集群节点启动也无法将它加入原集群，导致整个集群无法启动
   podManagementPolicy: "Parallel"
   template:
     metadata:
@@ -75,19 +75,47 @@ spec:
         app.kubernetes.io/component: fe
       name: doriscluster-helm-fe
     spec:
+      # initContainers:
+      #   - name: init-start-cmd
+      #     image: docker.io/library/mariadb:11.4.1-rc
+      #     command:
+      #       - echo 
+      #       - "enable_fqdn_mode = true" 
+      #       - ">>"
+      #       - /opt/apache-doris/fe/conf/fe.conf
+      #     env:
+      #       - name: FOLLOWER_URIS
+      #         value: doriscluster-helm-fe-0,doriscluster-helm-fe-1,doriscluster-helm-fe-2
+      #       - name: ENV_FE_ADDR
+      #         value: doriscluster-helm-fe-service
+      #       - name: POD_ID
+      #         valueFrom:
+      #           fieldRef:
+      #             fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
+      #     volumeMounts:
+      #       - mountPath: /opt/apache-doris/fe/doris-meta
+      #         name: fe-meta
       containers:
         - args:
             - $(ENV_FE_ADDR)
+            # - org.apache.doris.DorisFE
+            # - $(HELPER_KEY)
+            # - $(HELPER_VAL)
           command:
             - bash
             - -x
             - /opt/apache-doris/fe_entrypoint.sh
+            # - java
           env:
             - name: POD_NAME
               valueFrom:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: metadata.name
+            # - name: POD_ID
+            #   valueFrom:
+            #     fieldRef:
+            #       fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -103,16 +131,23 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: metadata.namespace
-            - name: CONFIGMAP_MOUNT_PATH
-              value: /etc/doris
-            - name: USER
-              value: root
+            # - name: CONFIGMAP_MOUNT_PATH
+            #   value: /etc/doris
+            # - name: ENABLE_FQDN_MODE
+            #   value: "true"
+            # - name: JAVA_OPTS
+            #   value: "-Xmx1024m"
+            # - name: CLASSPATH
+            #   value: "/opt/apache-doris/fe/lib/doris-fe.jar:/opt/apache-doris/fe/lib/*"
+            # - name: USER
+            #   value: root
             - name: DORIS_ROOT
               value: /opt/apache-doris
             - name: ENV_FE_ADDR
               value: doriscluster-helm-fe-service
-            - name: FE_QUERY_PORT
-              value: "9030"
+            # - name: FE_QUERY_PORT
+            #   value: "9030"
+            # spec.replicas 如果大于这个则多出来的节点会以observer加入
             - name: ELECT_NUMBER
               value: "3"
           image: selectdb/doris.fe-ubuntu:2.0.3
@@ -174,6 +209,8 @@ spec:
               name: fe-meta
             - mountPath: /opt/apache-doris/fe/log
               name: fe-log
+            # - mountPath: /opt/apache-doris/fe/conf
+            #   name: fe-conf
       terminationGracePeriodSeconds: 30
       volumes:
         # - emptyDir: {}
@@ -190,6 +227,12 @@ spec:
                   fieldPath: metadata.annotations
                 path: annotations
           name: podinfo
+        # - name: fe-conf
+        #   configMap:
+        #     name: fe-conf
+        #     items: 
+        #       - key: fe.conf
+        #         path: fe.conf
   # updateStrategy:
   #   rollingUpdate:
   #     maxUnavailable: "100%"
