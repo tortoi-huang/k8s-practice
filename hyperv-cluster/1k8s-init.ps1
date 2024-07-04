@@ -2,11 +2,14 @@
 
 # 创建新的交换机，名为fix-Switch， 类型为内部网络
 New-VMSwitch -SwitchName "fix-Switch" -SwitchType Internal
+# 查看交换机及其所有属性
+get-vmswitch fix-Switch|select *
 
 # 查看交换机序号(ifIndex)，
-Get-NetAdapter
+Get-NetAdapter -Name "vEthernet (fix-Switch)"|select-Object -First 1 { Write-Output $_.ifIndex } 
 # 设置交换机的ip地址，假设上面命令看到的ifIndex是137
 New-NetIPAddress -IPAddress 192.168.98.1 -PrefixLength 24 -InterfaceIndex 137
+# New-NetIPAddress -IPAddress 192.168.98.1 -PrefixLength 24 -InterfaceAlias "vEthernet (Default Switch)"
 
 # 配置交换机nat转换 name 为任意字符串, 所有192.168.98.0/24 ip均转发到改网络
 New-NetNat -Name MyNATnetwork -InternalIPInterfaceAddressPrefix 192.168.98.0/24
