@@ -10,7 +10,8 @@ Set-VMProcessor $vm_name -Count 4 -Reserve 10 -Maximum 75 -RelativeWeight 200
 
 New-VHD -Path "$cluster_path\$vm_name\$disk_dir\$vm_name.vhdx" -SizeBytes 127GB
 Add-VMHardDiskDrive -VMName $vm_name -Path "$cluster_path\$vm_name\$disk_dir\$vm_name.vhdx"
-Add-VMDvdDrive -VMName $vm_name -Path $vm_os_iso
+# Add-VMDvdDrive -VMName $vm_name -Path $vm_os_iso -ControllerNumber 1
+Get-VMDvdDrive -VMName $vm_name| Set-VMDvdDrive  -Path $vm_os_iso
 # 启用嵌套虚拟化
 Set-VMProcessor -ExposeVirtualizationExtensions $true -VMName $vm_name
 

@@ -20,6 +20,9 @@
 ```powershell
 # 看是否已经有默认的ssh 密钥，如果没有则使用生成
 # ssh-keygen
+# 设置脚本执行策略
+# Get-ExecutionPolicy
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 ```
 ## 创建交换机
 ```bash
@@ -27,18 +30,22 @@
 ```
 
 ## 创建虚拟机
-```bash
+```powershell
 .\2k8s1.ps1
+# 启动虚拟机
+Start-VM k8s1
 ```
 # 安装和配置虚拟机
 安装时注意选择手动设置ip地址，避免安装好后无法获取ip和无法连接网络
+subnet: 192.168.98.0/24
+adress: 192.168.98.201
+name server: 223.5.5.5,1.1.1.1
 
 安装用户名: huang
 
 ## 配置ubuntu
 ```bash
-Start-VM k8s1
-ssh huang@192.168.98.201
+# ssh huang@192.168.98.201
 
 # 查看可用交换分区
 swapon
