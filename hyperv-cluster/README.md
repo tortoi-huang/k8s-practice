@@ -53,7 +53,7 @@ swapon
 sudo sed -i "s/^\/swap.img/# \/swap.img/" /etc/fstab
 
 #配置hosts文件
-sed /k8s1/d /etc/hosts -i
+sudo sed /k8s1/d /etc/hosts -i
 echo -e "\n192.168.98.201 k8s1\n192.168.98.202 k8s2\n192.168.98.203 k8s3\n192.168.98.204 k8s4\n192.168.98.205 k8s5"| sudo tee -a /etc/hosts
 
 sudo apt update
