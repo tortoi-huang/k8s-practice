@@ -1,7 +1,7 @@
 #!ps
 
-# 创建新的交换机，名为fix-Switch， 类型为内部网络
-New-VMSwitch -SwitchName "fix-Switch" -SwitchType Internal
+# 创建新的交换机，名为$vm_switch， 类型为内部网络
+New-VMSwitch -SwitchName "$vm_switch" -SwitchType Internal
 
 # 查看交换机序号(ifIndex)，
 Get-NetAdapter
