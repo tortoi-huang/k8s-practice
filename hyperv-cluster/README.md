@@ -6,10 +6,10 @@
 子网为 192.168.98.0/24, 网关为 192.168.98.1
 
 创建5个虚拟机
-1. ip: 192.168.98.201, hostname: k8s1 (node)
-2. ip: 192.168.98.202, hostname: k8s2 (master etcd node)
-3. ip: 192.168.98.203, hostname: k8s3 (master etcd node)
-3. ip: 192.168.98.204, hostname: k8s4 (master etcd node)
+1. ip: 192.168.98.201, hostname: k8s1 (master etcd)
+2. ip: 192.168.98.202, hostname: k8s2 (master etcd)
+3. ip: 192.168.98.203, hostname: k8s3 (master etcd)
+3. ip: 192.168.98.204, hostname: k8s4 (node)
 3. ip: 192.168.98.205, hostname: k8s5 (node)
 
 虚拟机可以通过 nat 访问网络，并搭建五个节点的 kubernetes 集群。
@@ -55,6 +55,9 @@ sudo sed -i "s/^\/swap.img/# \/swap.img/" /etc/fstab
 #配置hosts文件
 sudo sed /k8s1/d /etc/hosts -i
 echo -e "\n192.168.98.201 k8s1\n192.168.98.202 k8s2\n192.168.98.203 k8s3\n192.168.98.204 k8s4\n192.168.98.205 k8s5"| sudo tee -a /etc/hosts
+# 检查主机唯一标识
+ip link
+sudo cat /sys/class/dmi/id/product_uuid
 
 sudo apt update
 sudo apt upgrade -y
@@ -65,32 +68,80 @@ sudo systemctl poweroff
 
 ## 安装kubernetes及其依赖
 ```bash
-sudo mkdir /usr/local/lib/systemd/system -p
-sudo curl -o /usr/local/lib/systemd/system/containerd.service https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
-# 安装containerd
-# 添加docker软件源
-# sudo apt install ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-sudo apt update
-
 # 安装容器运行时
-sudo apt install containerd.io -y
-# sudo ctr i pull docker.io/library/nginx:1.27.0
-# 启动cni网络支持, 如果不启动此项则后续 kubelet服务会启动失败，并一直重启
-sudo sed -i -r "s/^(disabled_plugins)/# \1/g" /etc/containerd/config.toml
-sudo systemctl restart containerd
+# 安装go, 下载并设置环境变量
+curl -O https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
+echo -e "\nexport GOPATH=\$HOME/go\nexport GOROOT=/usr/local/go" | sudo tee -a /etc/profile
+# 生成软连接到 /usr/local/bin, 因为 sudo 无法读取path变量, 不能通过设置path变量方式处理
+ln -s /usr/local/go/bin/go /usr/local/bin/go
 
-# 查看 containerd 运行状态
-sudo systemctl status containerd
+#安装runc, 通过源码编译安装, 参考: https://github.com/opencontainers/runc
+sudo apt install libseccomp-dev
+sudo apt install make git gcc pkg-config -y
+mkdir -p $GOPATH/src/github.com/opencontainers
+cd $GOPATH/src/github.com/opencontainers
+git clone https://github.com/opencontainers/runc
+cd runc
+make
+sudo make install
+
+# 下载 cni 网络插件, 似乎curl无法下载, 因为该地址会返回一个302
+wget https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
+sudo tar -xvf cni-plugins-linux-amd64-v1.5.1.tgz -C /opt/cni/bin
+echo -e "export CNI_PATH=/opt/cni/bin" | sudo tee -a /etc/profile
+
+# 安装 containerd 容器运行时, https://github.com/containerd/containerd/blob/main/docs/getting-started.md
+wget https://github.com/containerd/containerd/releases/download/v1.7.19/containerd-1.7.19-linux-amd64.tar.gz
+# 解压可执行文件到 /usr/local/bin, 实际可以解压到任意目录然后通过软连接创建到 /usr/local/bin
+sudo tar Cxzvf /usr/local containerd-1.7.19-linux-amd64.tar.gz
+# 使用系统服务配置systemd作为默认的cgroup管理程序
+sudo mkdir /usr/local/lib/systemd/system/ -p
+sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -O /usr/local/lib/systemd/system/containerd.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now containerd
+# 配置镜像仓库, https://github.com/containerd/containerd/blob/main/docs/hosts.md
+sudo mkdir -p /etc/containerd
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+# # TODO 以下配置需要手工修改
+# cat <<EOF | sudo tee /etc/containerd/config.toml
+# version = 2
+
+# [plugins."io.containerd.grpc.v1.cri".registry]
+#    config_path = "/etc/containerd/certs.d"
+# EOF
+# # 配置华为镜像仓库 https://085aa6fdb500267d0f7dc013da257e20.mirror.swr.myhuaweicloud.com
+# sudo mkdir /etc/containerd/certs.d/docker.io -p
+# cat <<EOF | sudo tee /etc/containerd/certs.d/docker.io/hosts.toml
+# server = "https://docker.io"
+
+# [host."https://085aa6fdb500267d0f7dc013da257e20.mirror.swr.myhuaweicloud.com"]
+#   capabilities = ["pull", "resolve"]
+
+# # [host."https://registry-1.docker.io"]
+# #   capabilities = ["pull", "resolve"]
+# EOF
+
+# sudo mkdir /etc/containerd/certs.d/registry.k8s.io -p
+# cat <<EOF | sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+# server = "https://registry.k8s.io"
+
+# [host."https://085aa6fdb500267d0f7dc013da257e20.mirror.swr.myhuaweicloud.com"]
+#   capabilities = ["pull", "resolve"]
+#   override_path = true
+# EOF
+
+# 测试 containerd
+# sudo ctr i pull docker.io/library/nginx:1.27.0
+# sudo ctr i pull hub.atomgit.com/amd64/nginx:1.25.2-perl
+# sudo ctr run -rm --net-host hub.atomgit.com/amd64/nginx:1.25.2-perl ng1
+# curl localhost
+# sudo ctr i rm hub.atomgit.com/amd64/nginx:1.25.2-perl
 
 # 安装kubernetes 依赖工具
 sudo apt install -y apt-transport-https gpg
 # 下载软件包仓库签名， 这里版本不重要，所有版本的前面都是一样的
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 # 添加k8s软件仓库
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo apt update
@@ -100,37 +151,13 @@ sudo apt install -y kubelet kubeadm kubectl
 # 标记为hold 防止自动更新
 sudo apt-mark hold kubelet kubeadm kubectl
 
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
 # 查看 kubelet 运行状态
 sudo systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
-
-# 配置cgroup驱动，使用默认值，暂时不配置
-# TODO
-
-# 配置 kubelet
-sudo tee /etc/systemd/system/kubelet.service.d/kubelet.conf <<EOF
-# 将下面的 "systemd" 替换为你的容器运行时所使用的 cgroup 驱动。
-# kubelet 的默认值为 "cgroupfs"。
-# 如果需要的话，将 "containerRuntimeEndpoint" 的值替换为一个不同的容器运行时。
-#
-apiVersion: kubelet.config.k8s.io/v1beta1
-kind: KubeletConfiguration
-authentication:
-  anonymous:
-    enabled: false
-  webhook:
-    enabled: false
-authorization:
-  mode: AlwaysAllow
-cgroupDriver: systemd
-address: 127.0.0.1
-containerRuntimeEndpoint: unix:///var/run/containerd/containerd.sock
-staticPodPath: /etc/kubernetes/manifests
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl restart kubelet
 ```
 
 # 复制虚拟机
@@ -149,6 +176,9 @@ ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s2/" /etc/hostname
 sudo systemctl reboot
+# 检查主机唯一标识
+ip link
+sudo cat /sys/class/dmi/id/product_uuid
 # sudo systemctl poweroff
 # Stop-VM k8s2
 
@@ -181,47 +211,18 @@ sudo systemctl reboot
 ```
 配置免密登录
 
-为了不不然模板机， 我们使用 k8s2 作为配置操作的主机, 登录到 k8s2
-
-ssh k8s2
-
 ```bash
-ssh-keygen
-ssh-copy-id k8s1
-ssh-copy-id k8s3
-ssh-copy-id k8s4
-ssh-copy-id k8s5
+# # ssh-keygen
+# ssh-copy-id k8s1
+# ssh-copy-id k8s2
+# ssh-copy-id k8s3
+# ssh-copy-id k8s4
+# ssh-copy-id k8s5
 
 ```
+
+# 配置控制节点(master)的高可用和负载均衡
+在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问kube server api时总是访问主节点。
 
 # 配置etcd
 
-分别登录 k8s2执行以下命令
-```bash
-# 配置 k8s2 ip
-sudo tee /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=/usr/bin/kubelet --config=/etc/systemd/system/kubelet.service.d/kubelet.conf
-Restart=always
-EOF
-
-ssh k8s3
-sudo tee /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=/usr/bin/kubelet --config=/etc/systemd/system/kubelet.service.d/kubelet.conf
-Restart=always
-EOF
-exit
-
-ssh k8s4
-sudo tee /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=/usr/bin/kubelet --config=/etc/systemd/system/kubelet.service.d/kubelet.conf
-Restart=always
-EOF
-exit
-
-```
