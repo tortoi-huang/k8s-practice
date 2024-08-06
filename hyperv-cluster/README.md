@@ -6,11 +6,12 @@
 子网为 192.168.98.0/24, 网关为 192.168.98.1
 
 创建5个虚拟机
-1. ip: 192.168.98.201, hostname: k8s1 (master etcd)
-2. ip: 192.168.98.202, hostname: k8s2 (master etcd)
-3. ip: 192.168.98.203, hostname: k8s3 (master etcd)
-3. ip: 192.168.98.204, hostname: k8s4 (node)
-3. ip: 192.168.98.205, hostname: k8s5 (node)
++ ip: 192.168.98.201, hostname: k8s1 (master etcd)
++ ip: 192.168.98.202, hostname: k8s2 (master etcd)
++ ip: 192.168.98.203, hostname: k8s3 (master etcd)
++ ip: 192.168.98.204, hostname: k8s4 (node)
++ ip: 192.168.98.205, hostname: k8s5 (node)
++ ip: 192.168.98.101, 控制面板集群负载均衡 vip
 
 虚拟机可以通过 nat 访问网络，并搭建五个节点的 kubernetes 集群。
 
@@ -52,9 +53,31 @@ swapon
 # 关闭交换分区, 删除或者注释行: swap.img
 sudo sed -i "s/^\/swap.img/# \/swap.img/" /etc/fstab
 
+# 配置环境变量
+cat <<EOF | sudo tee -a /etc/environment
+APISERVER_DEST_PORT=16443
+APISERVER_SRC_PORT=6443
+APISERVER_ADVERTISE_ADDRESS=cluster-endpoint
+LOADBALANCE_VIP=192.168.98.101
+CONTROL_NODE1=192.168.98.201
+CONTROL_NODE2=192.168.98.202
+CONTROL_NODE3=192.168.98.203
+DATA_NODE1=192.168.98.204
+DATA_NODE2=192.168.98.205
+EOF
+
 #配置hosts文件
 sudo sed /k8s1/d /etc/hosts -i
-echo -e "\n192.168.98.201 k8s1\n192.168.98.202 k8s2\n192.168.98.203 k8s3\n192.168.98.204 k8s4\n192.168.98.205 k8s5"| sudo tee -a /etc/hosts
+cat <<EOF | sudo tee -a /etc/hosts
+
+${CONTROL_NODE1} k8s1
+${CONTROL_NODE2} k8s2
+${CONTROL_NODE3} k8s3
+${DATA_NODE1} k8s4
+${DATA_NODE2} k8s5
+${LOADBALANCE_VIP} cluster-endpoint
+EOF
+# echo -e "\n192.168.98.201 k8s1\n192.168.98.202 k8s2\n192.168.98.203 k8s3\n192.168.98.204 k8s4\n192.168.98.205 k8s5\n192.168.98.101 cluster-endpoint"| sudo tee -a /etc/hosts
 # 检查主机唯一标识
 ip link
 sudo cat /sys/class/dmi/id/product_uuid
@@ -66,8 +89,18 @@ sudo systemctl restart systemd-resolved.service
 sudo apt update
 sudo apt upgrade -y
 # 重启
-sudo systemctl poweroff
+# sudo systemctl poweroff
+sudo systemctl reboot
+```
 
+## 安装软件负载均衡
+创建高可用集群需要有多个节点，需要一个域名或者虚拟ip总是可以访问到其中一个存活的节点, 所以需要配置软件负载均衡, 不使用域名解析的原因是大多数操作系统和客户端会缓存域名解析的结果, 服务宕机时常常不能及时切换.
+
+这里使用 keepalived + HAProxy 方案:
+```bash
+sudo apt install linux-headers-$(uname -r) -y
+sudo apt install keepalived -y
+sudo apt install haproxy -y
 ```
 
 ## 安装kubernetes及其依赖
@@ -189,21 +222,33 @@ sudo systemctl status kubelet
 # journalctl -fu kubelet
 ```
 
-# 复制虚拟机
+## 复制虚拟机
 
 ```bash
 .\3k8s-clone.ps1
 ```
 
-# 配置各个虚拟机的ip地址
+### 配置各个虚拟机的ip地址
 因为克隆了模板机的 ip 配置会有 ip 冲突，需要逐个虚拟机启动进行配置
 ```bash
+# 配置k8s1 ip
+Start-VM k8s1
+ssh huang@192.168.98.201
+cat <<EOF | sudo tee -a /etc/environment
+NODE_IP=192.168.98.201
+EOF
+sudo systemctl reboot
+
 # 配置k8s2 ip
 Start-VM k8s2
 ssh huang@192.168.98.201
 # sudo sed -i "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/cloud/cloud.cfg.d/90-installer-network.cfg
 sudo sed "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s2/" /etc/hostname
+
+cat <<EOF | sudo tee -a /etc/environment
+NODE_IP=192.168.98.202
+EOF
 sudo systemctl reboot
 # 检查主机唯一标识
 ip link
@@ -216,6 +261,10 @@ Start-VM k8s3
 ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.203\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s3/" /etc/hostname
+
+cat <<EOF | sudo tee -a /etc/environment
+NODE_IP=192.168.98.203
+EOF
 sudo systemctl reboot
 # sudo systemctl poweroff
 # Stop-VM k8s3
@@ -225,6 +274,10 @@ Start-VM k8s4
 ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.204\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s4/" /etc/hostname
+
+cat <<EOF | sudo tee -a /etc/environment
+NODE_IP=192.168.98.204
+EOF
 sudo systemctl reboot
 # sudo systemctl poweroff
 # Stop-VM k8s4
@@ -234,6 +287,10 @@ Start-VM k8s5
 ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.205\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s5/" /etc/hostname
+
+cat <<EOF | sudo tee -a /etc/environment
+NODE_IP=192.168.98.203
+EOF
 sudo systemctl reboot
 # sudo systemctl poweroff
 # Stop-VM k8s5
@@ -254,8 +311,246 @@ remove-item $HOME\.ssh\known_hosts
 
 ```
 
-# 配置控制节点(master)的高可用和负载均衡
+## 配置控制节点(master)的高可用和负载均衡
 在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问kube server api时总是访问主节点。
 
-# 配置etcd
+### 配置 keepalived
+参考: [text](https://github.com/kubernetes/kubeadm/blob/main/docs/ha-considerations.md#options-for-software-load-balancing)
+
+keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如果有更高优先级的服务器出现, keepalived 会立刻将 vip设置到更高优先级的服务器。 
+
+其中以下变量每台服务器不一样:
++ VI_1.state: 服务器角色: MASTER 或者 BACKUP
++ VI_1.priority 优先级: 总是该数值最大的获得 vip地址
++ VI_1.unicast_src_ip 当前节点的 ip地址
++ VI_1.unicast_peer 其他节点的ip地址
+
+其他配置解析:
+* unicast_peer: 如果不配置则通过VRRP 组播发现其他节点, 如果配置了则使用该列表的ip组建集群
+* unicast_src_ip: 表示可以绑定 vip的接口的ip地址, 比如 ip 192.168.98.201 绑定到 eth0 接口，backup状态下 eth0 只有一个ip就是 unicast_src_ip, master状态下 eth0 有两个 ip: unicast_src_ip 和 LOADBALANCE_VIP
+
+在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
+```bash
+cat <<EOF | sudo tee /etc/keepalived/check_apiserver.sh
+#!/bin/sh
+
+errorExit() {
+    echo "*** $*" 1>&2
+    exit 1
+}
+
+curl -sfk --max-time 2 https://localhost:${APISERVER_DEST_PORT}/healthz -o /dev/null || errorExit "Error GET https://localhost:${APISERVER_DEST_PORT}/healthz"
+EOF
+
+sudo chmod +x /etc/keepalived/check_apiserver.sh
+```
+
+#### 配置 k8s1
+```bash
+# 配置 keepalived
+cat <<EOF | sudo tee /etc/keepalived/keepalived.conf
+! /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id LVS_DEVEL
+}
+vrrp_script check_apiserver {
+  script "/etc/keepalived/check_apiserver.sh"
+  interval 3
+  weight -2
+  fall 10
+  rise 2
+}
+
+vrrp_instance VI_1 {
+    state MASTER 
+    interface eth0
+    virtual_router_id 51
+    priority 102
+    authentication {
+        auth_type PASS
+        auth_pass 42
+    }
+    unicast_src_ip ${CONTROL_NODE1}/24
+    unicast_peer {
+        ${CONTROL_NODE2}/24
+        ${CONTROL_NODE3}/24
+    }
+    virtual_ipaddress {
+        ${LOADBALANCE_VIP}/24
+    }
+    track_script {
+        check_apiserver
+    }
+}
+EOF
+
+sudo systemctl restart keepalived
+
+# 查看 eth0 上的虚拟ip地址是否配置成功
+ip addr
+```
+
+#### 配置 k8s2
+```bash
+# 配置 keepalived
+cat <<EOF | sudo tee /etc/keepalived/keepalived.conf
+! /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id LVS_DEVEL
+}
+vrrp_script check_apiserver {
+  script "/etc/keepalived/check_apiserver.sh"
+  interval 3
+  weight -2
+  fall 10
+  rise 2
+}
+
+vrrp_instance VI_1 {
+    state BACKUP 
+    interface eth0
+    virtual_router_id 51
+    priority 101
+    authentication {
+        auth_type PASS
+        auth_pass 42
+    }
+    unicast_src_ip ${CONTROL_NODE2}/24
+    unicast_peer {
+        ${CONTROL_NODE1}/24
+        ${CONTROL_NODE3}/24
+    }
+    virtual_ipaddress {
+        ${LOADBALANCE_VIP}/24
+    }
+    track_script {
+        check_apiserver
+    }
+}
+EOF
+
+sudo systemctl restart keepalived
+
+# 查看 eth0 上的虚拟ip地址是否配置成功
+ip addr
+```
+
+#### 配置 k8s3
+```bash
+# 配置 keepalived
+cat <<EOF | sudo tee /etc/keepalived/keepalived.conf
+! /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id LVS_DEVEL
+}
+vrrp_script check_apiserver {
+  script "/etc/keepalived/check_apiserver.sh"
+  interval 3
+  weight -2
+  fall 10
+  rise 2
+}
+
+vrrp_instance VI_1 {
+    state BACKUP 
+    interface eth0
+    virtual_router_id 51
+    priority 100
+    authentication {
+        auth_type PASS
+        auth_pass 42
+    }
+    unicast_src_ip ${CONTROL_NODE3}/24
+    unicast_peer {
+        ${CONTROL_NODE1}/24
+        ${CONTROL_NODE2}/24
+    }
+    virtual_ipaddress {
+        ${LOADBALANCE_VIP}/24
+    }
+    track_script {
+        check_apiserver
+    }
+}
+EOF
+
+sudo systemctl restart keepalived
+
+# 查看 eth0 上的虚拟ip地址是否配置成功
+ip addr
+```
+
+### 配置 HAProxy
+因为 keepalived 只提供高可用能力, 不具备负载均衡能力, 所以需要配置 HAProxy 为api server做负载均衡
+```bash
+cat <<EOF | sudo tee /etc/haproxy/haproxy.cfg
+# /etc/haproxy/haproxy.cfg
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log stdout format raw local0
+    daemon
+
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 1
+    timeout http-request    10s
+    timeout queue           20s
+    timeout connect         5s
+    timeout client          35s
+    timeout server          35s
+    timeout http-keep-alive 10s
+    timeout check           10s
+
+#---------------------------------------------------------------------
+# apiserver frontend which proxys to the control plane nodes
+#---------------------------------------------------------------------
+frontend apiserver
+    bind *:${APISERVER_DEST_PORT}
+    mode tcp
+    option tcplog
+    default_backend apiserverbackend
+
+#---------------------------------------------------------------------
+# round robin balancing for apiserver
+#---------------------------------------------------------------------
+backend apiserverbackend
+    option httpchk
+
+    http-check connect ssl
+    http-check send meth GET uri /healthz
+    http-check expect status 200
+
+    mode tcp
+    balance     roundrobin
+    
+    server 1 k8s1:${APISERVER_SRC_PORT} check verify none
+    server 2 k8s2:${APISERVER_SRC_PORT} check verify none
+    server 3 k8s3:${APISERVER_SRC_PORT} check verify none
+EOF
+
+sudo systemctl restart haproxy
+journalctl -fu haproxy
+```
+
+## 配置etcd
+
+## 初始化 kubernetes 集群
+初始化高可用 kubernetes 集群需要设置两个参数: 
++ apiserver-advertise-address: master集群的每个节点不同, 可以访问到每个master 服务节点各自的ip地址或者域名, 在这里三个节点分别是 k8s1, k8s2, k8s3
++ control-plane-endpoint: master集群的共享ip地址或者域名, 这里是负载均衡ip ${LOADBALANCE_VIP} 或域名 cluster-endpoint
 
