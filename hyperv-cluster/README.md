@@ -59,6 +59,10 @@ echo -e "\n192.168.98.201 k8s1\n192.168.98.202 k8s2\n192.168.98.203 k8s3\n192.16
 ip link
 sudo cat /sys/class/dmi/id/product_uuid
 
+# 修改 dns 配置
+sudo sed -i s/^#DNS=/DNS=1.1.1.1,223.5.5.5/ /etc/systemd/resolved.conf
+sudo systemctl restart systemd-resolved.service
+
 sudo apt update
 sudo apt upgrade -y
 # 重启
@@ -67,6 +71,7 @@ sudo systemctl poweroff
 ```
 
 ## 安装kubernetes及其依赖
+安装 go
 ```bash
 # 安装容器运行时
 # 安装go, 下载并设置环境变量
@@ -75,7 +80,10 @@ sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.ta
 echo -e "\nexport GOPATH=\$HOME/go\nexport GOROOT=/usr/local/go" | sudo tee -a /etc/profile
 # 生成软连接到 /usr/local/bin, 因为 sudo 无法读取path变量, 不能通过设置path变量方式处理
 ln -s /usr/local/go/bin/go /usr/local/bin/go
+```
 
+安装 runc
+```bash
 #安装runc, 通过源码编译安装, 参考: https://github.com/opencontainers/runc
 sudo apt install libseccomp-dev
 sudo apt install make git gcc pkg-config -y
@@ -85,12 +93,20 @@ git clone https://github.com/opencontainers/runc
 cd runc
 make
 sudo make install
+```
+
+安装 cni 网络插件
+```bash
 
 # 下载 cni 网络插件, 似乎curl无法下载, 因为该地址会返回一个302
 wget https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
 sudo tar -xvf cni-plugins-linux-amd64-v1.5.1.tgz -C /opt/cni/bin
 echo -e "export CNI_PATH=/opt/cni/bin" | sudo tee -a /etc/profile
 
+```
+
+安装 containerd 运行时
+```bash
 # 安装 containerd 容器运行时, https://github.com/containerd/containerd/blob/main/docs/getting-started.md
 wget https://github.com/containerd/containerd/releases/download/v1.7.19/containerd-1.7.19-linux-amd64.tar.gz
 # 解压可执行文件到 /usr/local/bin, 实际可以解压到任意目录然后通过软连接创建到 /usr/local/bin
@@ -100,44 +116,57 @@ sudo mkdir /usr/local/lib/systemd/system/ -p
 sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -O /usr/local/lib/systemd/system/containerd.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now containerd
-# 配置镜像仓库, https://github.com/containerd/containerd/blob/main/docs/hosts.md
-sudo mkdir -p /etc/containerd
-sudo containerd config default | sudo tee /etc/containerd/config.toml
-# # TODO 以下配置需要手工修改
-# cat <<EOF | sudo tee /etc/containerd/config.toml
-# version = 2
+```
 
-# [plugins."io.containerd.grpc.v1.cri".registry]
-#    config_path = "/etc/containerd/certs.d"
-# EOF
-# # 配置华为镜像仓库 https://085aa6fdb500267d0f7dc013da257e20.mirror.swr.myhuaweicloud.com
-# sudo mkdir /etc/containerd/certs.d/docker.io -p
-# cat <<EOF | sudo tee /etc/containerd/certs.d/docker.io/hosts.toml
-# server = "https://docker.io"
+配置 containerd 
+[参考:](https://github.com/containerd/containerd/blob/main/docs/hosts.md)
+生成默认的配置文件，避免的手工编写麻烦
+```bash
+sudo mkdir -p /etc/containerd/certs.d/_default
+sudo mkdir -p /etc/containerd/certs.d/docker.io
+sudo mkdir -p /etc/containerd/certs.d/registry.k8s.io
+# containerd config default | sudo tee /etc/containerd/config.toml
 
-# [host."https://085aa6fdb500267d0f7dc013da257e20.mirror.swr.myhuaweicloud.com"]
-#   capabilities = ["pull", "resolve"]
+# journalctl -fu containerd
+# containerd 配置文件
+cat <<EOF | sudo tee /etc/containerd/config.toml
+version = 2
 
-# # [host."https://registry-1.docker.io"]
-# #   capabilities = ["pull", "resolve"]
-# EOF
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
+EOF
 
-# sudo mkdir /etc/containerd/certs.d/registry.k8s.io -p
-# cat <<EOF | sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml
-# server = "https://registry.k8s.io"
+# 默认仓库配置
+cat <<EOF | sudo tee /etc/containerd/certs.d/_default/hosts.toml
+[host."https://registry.tortoi.top"]
+  capabilities = ["pull", "resolve"]
+EOF
 
-# [host."https://085aa6fdb500267d0f7dc013da257e20.mirror.swr.myhuaweicloud.com"]
-#   capabilities = ["pull", "resolve"]
-#   override_path = true
-# EOF
+# docker 仓库配置
+cat <<EOF | sudo tee /etc/containerd/certs.d/docker.io/hosts.toml
+server = "https://docker.io"
 
-# 测试 containerd
-# sudo ctr i pull docker.io/library/nginx:1.27.0
-# sudo ctr i pull hub.atomgit.com/amd64/nginx:1.25.2-perl
-# sudo ctr run -rm --net-host hub.atomgit.com/amd64/nginx:1.25.2-perl ng1
-# curl localhost
-# sudo ctr i rm hub.atomgit.com/amd64/nginx:1.25.2-perl
+[host."https://registry.tortoi.top"]
+  capabilities = ["pull", "resolve"]
+EOF
 
+# k8s 仓库配置
+cat <<EOF | sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+server = "https://registry.k8s.io"
+
+[host."https://k8s.tortoi.top"]
+  capabilities = ["pull", "resolve"]
+EOF
+
+sudo systemctl restart containerd
+# 查看生效的配置
+# containerd config dump
+```
+
+安装 kubelet 及相关工具
+```bash
 # 安装kubernetes 依赖工具
 sudo apt install -y apt-transport-https gpg
 # 下载软件包仓库签名， 这里版本不重要，所有版本的前面都是一样的
@@ -154,7 +183,7 @@ sudo apt-mark hold kubelet kubeadm kubectl
 sudo systemctl daemon-reload
 sudo systemctl restart kubelet
 
-# 查看 kubelet 运行状态
+# 查看 kubelet 运行状态, 此处状态应该在不断重启中
 sudo systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
@@ -208,6 +237,10 @@ sudo sed -i "s/k8s1/k8s5/" /etc/hostname
 sudo systemctl reboot
 # sudo systemctl poweroff
 # Stop-VM k8s5
+```
+
+```powershell
+remove-item $HOME\.ssh\known_hosts
 ```
 配置免密登录
 
