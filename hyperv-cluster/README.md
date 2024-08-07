@@ -67,19 +67,21 @@ sudo sed -i "s/#net\.ipv4\.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
 # echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
 
 # 配置环境变量
-sudo tee -a /etc/environment <<-EOF
-APISERVER_DEST_PORT=16443
-APISERVER_SRC_PORT=6443
-APISERVER_ADVERTISE_ADDRESS=cluster-endpoint
-LOADBALANCE_VIP=192.168.98.101
-CONTROL_NODE1=192.168.98.201
-CONTROL_NODE2=192.168.98.202
-CONTROL_NODE3=192.168.98.203
-DATA_NODE1=192.168.98.204
-DATA_NODE2=192.168.98.205
+sudo tee -a /etc/profile <<-"EOF"
+export APISERVER_DEST_PORT=16443
+export APISERVER_SRC_PORT=6443
+export APISERVER_ADVERTISE_ADDRESS=cluster-endpoint
+export LOADBALANCE_VIP=192.168.98.101
+export CONTROL_NODE1=192.168.98.201
+export CONTROL_NODE2=192.168.98.202
+export CONTROL_NODE3=192.168.98.203
+export DATA_NODE1=192.168.98.204
+export DATA_NODE2=192.168.98.205
 EOF
 
-#配置hosts文件
+logout
+# 依赖前面配置需要重新登录
+# 配置hosts文件
 sudo sed /k8s1/d /etc/hosts -i
 cat <<EOF | sudo tee -a /etc/hosts
 
@@ -259,10 +261,10 @@ Start-VM k8s2
 ssh huang@192.168.98.201
 # sudo sed -i "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/cloud/cloud.cfg.d/90-installer-network.cfg
 sudo sed "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/netplan/50-cloud-init.yaml -i
-sudo sed -i "s/k8s1/k8s2/" /etc/hostname
+echo k8s2 | sudo tee /etc/hostname
 
-sudo tee -a /etc/environment <<-EOF
-NODE_IP=192.168.98.202
+sudo tee -a /etc/profile <<-EOF
+export NODE_IP=192.168.98.202
 EOF
 sudo systemctl reboot
 # 检查主机唯一标识
@@ -275,9 +277,9 @@ sudo cat /sys/class/dmi/id/product_uuid
 Start-VM k8s3
 ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.203\/24/g" /etc/netplan/50-cloud-init.yaml -i
-sudo sed -i "s/k8s1/k8s3/" /etc/hostname
+echo k8s3 | sudo tee /etc/hostname
 
-sudo tee -a /etc/environment <<-EOF
+sudo tee -a /etc/profile <<-EOF
 NODE_IP=192.168.98.203
 EOF
 sudo systemctl reboot
@@ -288,9 +290,9 @@ sudo systemctl reboot
 Start-VM k8s4
 ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.204\/24/g" /etc/netplan/50-cloud-init.yaml -i
-sudo sed -i "s/k8s1/k8s4/" /etc/hostname
+echo k8s4 | sudo tee /etc/hostname
 
-sudo tee -a /etc/environment <<-EOF
+sudo tee -a /etc/profile <<-EOF
 NODE_IP=192.168.98.204
 EOF
 sudo systemctl reboot
@@ -301,9 +303,9 @@ sudo systemctl reboot
 Start-VM k8s5
 ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.205\/24/g" /etc/netplan/50-cloud-init.yaml -i
-sudo sed -i "s/k8s1/k8s5/" /etc/hostname
+echo k8s5 | sudo tee /etc/hostname
 
-sudo tee -a /etc/environment <<-EOF
+sudo tee -a /etc/profile <<-EOF
 NODE_IP=192.168.98.205
 EOF
 sudo systemctl reboot
@@ -313,16 +315,17 @@ sudo systemctl reboot
 # 配置k8s1 ip
 Start-VM k8s1
 ssh huang@192.168.98.201
-sudo tee -a /etc/environment <<-EOF
+echo k8s1 | sudo tee /etc/hostname
+sudo tee -a /etc/profile <<-EOF
 NODE_IP=192.168.98.201
 EOF
 
 # 生成ssh key 用来使用scp 复制文件到其他节点, 非安装 kubernetes 必须
 # ssh-keygen
-# ssh-copy-id k8s2
-# ssh-copy-id k8s3
-# ssh-copy-id k8s4
-# ssh-copy-id k8s5
+# ssh-copy-id huang@k8s2
+# ssh-copy-id huang@k8s3
+# ssh-copy-id huang@k8s4
+# ssh-copy-id huang@k8s5
 
 sudo systemctl reboot
 ```
@@ -370,7 +373,7 @@ errorExit() {
     exit 1
 }
 
-curl -sfk --max-time 2 https://localhost:${APISERVER_DEST_PORT}/healthz -o /dev/null || errorExit "Error GET https://localhost:${APISERVER_DEST_PORT}/healthz"
+curl -sfk --max-time 2 https://localhost:${APISERVER_SRC_PORT}/healthz -o /dev/null || errorExit "Error GET https://localhost:${APISERVER_SRC_PORT}/healthz"
 EOF
 
 sudo chmod +x /etc/keepalived/check_apiserver.sh
@@ -512,9 +515,12 @@ sudo systemctl restart keepalived
 
 # 查看 eth0 上的虚拟ip地址是否配置成功
 ip addr
+# 使用nc 确认 keepalived 健康检查发起了调用
+nc -l ${APISERVER_SRC_PORT}
 ```
 
 ### 配置 HAProxy
+分别在 k8s1, k8s2, k8s3 三个服务器上配置.  
 因为 keepalived 只提供高可用能力, 不具备负载均衡能力, 所以需要配置 HAProxy 为api server做负载均衡
 配置解析: 
 + APISERVER_DEST_PORT: 类似nginx 的监听端口, haproxy 对外提供服务的端口
@@ -582,7 +588,7 @@ sudo systemctl restart haproxy
 journalctl -fu haproxy
 ```
 
-## 配置etcd
+## 配置 etcd
 
 ## 初始化 kubernetes 集群
 初始化高可用 kubernetes 集群需要设置两个参数: 
@@ -592,11 +598,8 @@ journalctl -fu haproxy
 首先确保 keepalived master 是 k8s1 
 ### 初始化 k8s1
 ```bash
-# 这里使用ip地址, 如果使用域名则需要配置主机的host, 或者通过其他域名解析方案
-sudo kubeadm init --control-plane-endpoint ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP}
-# 上述命令会答应token 保留备用
 
-# 手工复制证书
+# 手工复制证书脚本, 需要执行 init 后才会生成证书
 # sudo ssh-keygen
 # sudo ssh-copy-id huang@k8s2
 # sudo ssh-copy-id huang@k8s3
@@ -625,6 +628,11 @@ done
 EOF
 
 chmod +x ~/copy_cert.sh
+
+# 这里使用ip地址, 如果使用域名则需要配置主机的host, 或者通过其他域名解析方案
+sudo kubeadm init --control-plane-endpoint ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP}
+# 上述命令会答应token 保留备用
+
 sudo ~/copy_cert.sh
 ```
 
