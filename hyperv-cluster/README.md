@@ -232,9 +232,15 @@ sudo systemctl status kubelet
 # journalctl -fu kubelet
 
 # 配置crictl, 可以不配置， crictl会搜索到系统上唯一的运行时, 如果安装了多个运行时则需要配置选择一个
-sudo crictl pods
-sudo sed -i "s/runtime-endpoint: \"\"/runtime-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
-sudo sed -i "s/image-endpoint: \"\"/image-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
+sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<-"EOF"
+runtime-endpoint: "unix:///run/containerd/containerd.sock"
+image-endpoint: "unix:///run/containerd/containerd.sock"
+timeout: 0
+debug: false
+pull-image-on-create: false
+disable-pull-on-run: false
+EOF
+
 ```
 
 ## 复制虚拟机
