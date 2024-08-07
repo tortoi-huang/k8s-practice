@@ -51,6 +51,10 @@ ubuntu软件源: http://mirrors.aliyun.com/ubuntu
 ```bash
 # ssh huang@192.168.98.201
 
+sudo apt update
+sudo apt upgrade -y
+# 安装和更新 ubuntu 非常耗时, 建议此时备份虚拟磁盘模板
+
 # 查看可用交换分区
 swapon
 # 关闭交换分区, 删除或者注释行: swap.img
@@ -63,7 +67,7 @@ sudo sed -i "s/#net\.ipv4\.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
 # echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
 
 # 配置环境变量
-cat <<EOF | sudo tee -a /etc/environment
+sudo tee -a /etc/environment <<-EOF
 APISERVER_DEST_PORT=16443
 APISERVER_SRC_PORT=6443
 APISERVER_ADVERTISE_ADDRESS=cluster-endpoint
@@ -92,11 +96,9 @@ ip link
 sudo cat /sys/class/dmi/id/product_uuid
 
 # 修改 dns 配置
-sudo sed -i s/^#DNS=/DNS=1.1.1.1,223.5.5.5/ /etc/systemd/resolved.conf
-sudo systemctl restart systemd-resolved.service
+# sudo sed -i s/^#DNS=/DNS=1.1.1.1,223.5.5.5/ /etc/systemd/resolved.conf
+# sudo systemctl restart systemd-resolved.service
 
-sudo apt update
-sudo apt upgrade -y
 # 重启
 # sudo systemctl poweroff
 sudo systemctl reboot
@@ -107,7 +109,7 @@ sudo systemctl reboot
 
 这里使用 keepalived + HAProxy 方案:
 ```bash
-sudo apt install linux-headers-$(uname -r) -y
+# sudo apt install linux-headers-$(uname -r) -y
 sudo apt install keepalived -y
 sudo apt install haproxy -y
 ```
@@ -117,17 +119,19 @@ sudo apt install haproxy -y
 ```bash
 # 安装容器运行时
 # 安装go, 下载并设置环境变量
-curl -O https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
+# curl -O https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz
+# sudo rm -rf /usr/local/go
+# sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
+wget -qO- https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz | sudo tar -C /usr/local -xvz
 echo -e "\nexport GOPATH=\$HOME/go\nexport GOROOT=/usr/local/go" | sudo tee -a /etc/profile
 # 生成软连接到 /usr/local/bin, 因为 sudo 无法读取path变量, 不能通过设置path变量方式处理
-ln -s /usr/local/go/bin/go /usr/local/bin/go
+sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
 ```
 
-安装 runc
+### 安装 runc
 ```bash
 #安装runc, 通过源码编译安装, 参考: https://github.com/opencontainers/runc
-sudo apt install libseccomp-dev
+sudo apt install libseccomp-dev -y
 sudo apt install make git gcc pkg-config -y
 mkdir -p $GOPATH/src/github.com/opencontainers
 cd $GOPATH/src/github.com/opencontainers
@@ -137,22 +141,22 @@ make
 sudo make install
 ```
 
-安装 cni 网络插件
+### 安装 cni 网络插件
 ```bash
-
+sudo mkdir -p /opt/cni/bin
 # 下载 cni 网络插件, 似乎curl无法下载, 因为该地址会返回一个302
-wget https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
-sudo tar -xvf cni-plugins-linux-amd64-v1.5.1.tgz -C /opt/cni/bin
+wget -qO- https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz | sudo tar -C /opt/cni/bin -xvz 
+# sudo tar -xvf cni-plugins-linux-amd64-v1.5.1.tgz -C /opt/cni/bin
 echo -e "export CNI_PATH=/opt/cni/bin" | sudo tee -a /etc/profile
 
 ```
 
-安装 containerd 运行时
+### 安装 containerd 运行时
 ```bash
 # 安装 containerd 容器运行时, https://github.com/containerd/containerd/blob/main/docs/getting-started.md
-wget https://github.com/containerd/containerd/releases/download/v1.7.19/containerd-1.7.19-linux-amd64.tar.gz
+wget -qO- https://github.com/containerd/containerd/releases/download/v1.7.19/containerd-1.7.19-linux-amd64.tar.gz | sudo tar Cxzv /usr/local 
 # 解压可执行文件到 /usr/local/bin, 实际可以解压到任意目录然后通过软连接创建到 /usr/local/bin
-sudo tar Cxzvf /usr/local containerd-1.7.19-linux-amd64.tar.gz
+# sudo tar Cxzvf /usr/local containerd-1.7.19-linux-amd64.tar.gz
 # 使用系统服务配置systemd作为默认的cgroup管理程序
 sudo mkdir /usr/local/lib/systemd/system/ -p
 sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -O /usr/local/lib/systemd/system/containerd.service
@@ -164,14 +168,11 @@ sudo systemctl enable --now containerd
 [参考:](https://github.com/containerd/containerd/blob/main/docs/hosts.md)
 生成默认的配置文件，避免的手工编写麻烦
 ```bash
-sudo mkdir -p /etc/containerd/certs.d/_default
-sudo mkdir -p /etc/containerd/certs.d/docker.io
-sudo mkdir -p /etc/containerd/certs.d/registry.k8s.io
-# containerd config default | sudo tee /etc/containerd/config.toml
+sudo mkdir -p /etc/containerd/certs.d/_default /etc/containerd/certs.d/docker.io /etc/containerd/certs.d/registry.k8s.io
 
 # journalctl -fu containerd
 # containerd 配置文件
-cat <<EOF | sudo tee /etc/containerd/config.toml
+sudo tee /etc/containerd/config.toml <<-"EOF"
 version = 2
 
 [plugins]
@@ -181,13 +182,13 @@ version = 2
 EOF
 
 # 默认仓库配置
-cat <<EOF | sudo tee /etc/containerd/certs.d/_default/hosts.toml
+sudo tee /etc/containerd/certs.d/_default/hosts.toml <<-"EOF"
 [host."https://registry.tortoi.top"]
   capabilities = ["pull", "resolve"]
 EOF
 
 # docker 仓库配置
-cat <<EOF | sudo tee /etc/containerd/certs.d/docker.io/hosts.toml
+sudo tee /etc/containerd/certs.d/docker.io/hosts.toml <<-"EOF"
 server = "https://docker.io"
 
 [host."https://registry.tortoi.top"]
@@ -195,7 +196,7 @@ server = "https://docker.io"
 EOF
 
 # k8s 仓库配置
-cat <<EOF | sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<-"EOF"
 server = "https://registry.k8s.io"
 
 [host."https://k8s.tortoi.top"]
@@ -205,13 +206,9 @@ EOF
 sudo systemctl restart containerd
 # 查看生效的配置
 # containerd config dump
-
-# 配置crictl, 可以不配置， crictl会搜索到系统上唯一的运行时, 如果安装了多个运行时则需要配置选择一个
-sudo sed -i "s/runtime-endpoint: \"\"/runtime-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
-sudo sed -i "s/image-endpoint: \"\"/image-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
 ```
 
-安装 kubelet 及相关工具
+### 安装 kubelet 及相关工具
 ```bash
 # 安装kubernetes 依赖工具
 sudo apt install -y apt-transport-https gpg
@@ -233,11 +230,17 @@ sudo systemctl restart kubelet
 sudo systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
+
+# 配置crictl, 可以不配置， crictl会搜索到系统上唯一的运行时, 如果安装了多个运行时则需要配置选择一个
+sudo crictl pods
+sudo sed -i "s/runtime-endpoint: \"\"/runtime-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
+sudo sed -i "s/image-endpoint: \"\"/image-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
 ```
 
 ## 复制虚拟机
 
 ```bash
+# 因为要复制磁盘, 使用命令stop-vm 或者在hyper-v控制台上优雅关机, 确保模板机的快照合并到虚拟磁盘, 在虚拟机内部使用linux命令关机是不会合并快照的.
 .\3k8s-clone.ps1
 ```
 
@@ -252,7 +255,7 @@ ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s2/" /etc/hostname
 
-cat <<EOF | sudo tee -a /etc/environment
+sudo tee -a /etc/environment <<-EOF
 NODE_IP=192.168.98.202
 EOF
 sudo systemctl reboot
@@ -268,7 +271,7 @@ ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.203\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s3/" /etc/hostname
 
-cat <<EOF | sudo tee -a /etc/environment
+sudo tee -a /etc/environment <<-EOF
 NODE_IP=192.168.98.203
 EOF
 sudo systemctl reboot
@@ -281,7 +284,7 @@ ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.204\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s4/" /etc/hostname
 
-cat <<EOF | sudo tee -a /etc/environment
+sudo tee -a /etc/environment <<-EOF
 NODE_IP=192.168.98.204
 EOF
 sudo systemctl reboot
@@ -294,7 +297,7 @@ ssh huang@192.168.98.201
 sudo sed "s/192.168.98.201\/24/192.168.98.205\/24/g" /etc/netplan/50-cloud-init.yaml -i
 sudo sed -i "s/k8s1/k8s5/" /etc/hostname
 
-cat <<EOF | sudo tee -a /etc/environment
+sudo tee -a /etc/environment <<-EOF
 NODE_IP=192.168.98.205
 EOF
 sudo systemctl reboot
@@ -304,7 +307,7 @@ sudo systemctl reboot
 # 配置k8s1 ip
 Start-VM k8s1
 ssh huang@192.168.98.201
-cat <<EOF | sudo tee -a /etc/environment
+sudo tee -a /etc/environment <<-EOF
 NODE_IP=192.168.98.201
 EOF
 
@@ -353,7 +356,7 @@ keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如�
 
 在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
 ```bash
-cat <<EOF | sudo tee /etc/keepalived/check_apiserver.sh
+sudo tee /etc/keepalived/check_apiserver.sh <<-EOF
 #!/bin/sh
 
 errorExit() {
@@ -370,7 +373,7 @@ sudo chmod +x /etc/keepalived/check_apiserver.sh
 #### 配置 k8s1
 ```bash
 # 配置 keepalived
-cat <<EOF | sudo tee /etc/keepalived/keepalived.conf
+sudo tee /etc/keepalived/keepalived.conf <<-EOF
 ! /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 global_defs {
@@ -416,7 +419,7 @@ ip addr
 #### 配置 k8s2
 ```bash
 # 配置 keepalived
-cat <<EOF | sudo tee /etc/keepalived/keepalived.conf
+sudo tee /etc/keepalived/keepalived.conf <<-EOF
 ! /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 global_defs {
@@ -462,7 +465,7 @@ ip addr
 #### 配置 k8s3
 ```bash
 # 配置 keepalived
-cat <<EOF | sudo tee /etc/keepalived/keepalived.conf
+sudo tee /etc/keepalived/keepalived.conf <<-EOF
 ! /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 global_defs {
@@ -512,7 +515,7 @@ ip addr
 + server ${node-id} ${addr}:${APISERVER_SRC_PORT} 转发后端地址, 可以配置多个
 
 ```bash
-cat <<EOF | sudo tee /etc/haproxy/haproxy.cfg
+sudo tee /etc/haproxy/haproxy.cfg <<-EOF
 # /etc/haproxy/haproxy.cfg
 #---------------------------------------------------------------------
 # Global settings
