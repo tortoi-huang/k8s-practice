@@ -36,15 +36,18 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 # 启动虚拟机
 Start-VM k8s1
 ```
-# 安装和配置虚拟机
+## 安装和配置虚拟机
 安装时注意选择手动设置ip地址，避免安装好后无法获取ip和无法连接网络
 subnet: 192.168.98.0/24
 adress: 192.168.98.201
+gateway: 192.168.98.1
 name server: 223.5.5.5,1.1.1.1
 
 安装用户名: huang
 
-## 配置ubuntu
+ubuntu软件源: http://mirrors.aliyun.com/ubuntu
+
+### 配置ubuntu
 ```bash
 # ssh huang@192.168.98.201
 
@@ -52,6 +55,12 @@ name server: 223.5.5.5,1.1.1.1
 swapon
 # 关闭交换分区, 删除或者注释行: swap.img
 sudo sed -i "s/^\/swap.img/# \/swap.img/" /etc/fstab
+# 禁止 ipv4 地址转发
+sudo sed -i "s/#net\.ipv4\.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
+# 临时的，重启不生效
+# sudo sysctl -w net.ipv4.ip_forward=1
+# 以下命令同样效果
+# echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
 
 # 配置环境变量
 cat <<EOF | sudo tee -a /etc/environment
@@ -196,6 +205,10 @@ EOF
 sudo systemctl restart containerd
 # 查看生效的配置
 # containerd config dump
+
+# 配置crictl, 可以不配置， crictl会搜索到系统上唯一的运行时, 如果安装了多个运行时则需要配置选择一个
+sudo sed -i "s/runtime-endpoint: \"\"/runtime-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
+sudo sed -i "s/image-endpoint: \"\"/image-endpoint: \"unix:\/\/\/run\/containerd\/containerd.sock\"/" /etc/crictl.yaml
 ```
 
 安装 kubelet 及相关工具
@@ -231,14 +244,7 @@ sudo systemctl status kubelet
 ### 配置各个虚拟机的ip地址
 因为克隆了模板机的 ip 配置会有 ip 冲突，需要逐个虚拟机启动进行配置
 ```bash
-# 配置k8s1 ip
-Start-VM k8s1
-ssh huang@192.168.98.201
-cat <<EOF | sudo tee -a /etc/environment
-NODE_IP=192.168.98.201
-EOF
-sudo systemctl reboot
-
+# k8s1 为安装工作主机, 依赖其他主机启动，最后配置
 # 配置k8s2 ip
 Start-VM k8s2
 ssh huang@192.168.98.201
@@ -289,11 +295,27 @@ sudo sed "s/192.168.98.201\/24/192.168.98.205\/24/g" /etc/netplan/50-cloud-init.
 sudo sed -i "s/k8s1/k8s5/" /etc/hostname
 
 cat <<EOF | sudo tee -a /etc/environment
-NODE_IP=192.168.98.203
+NODE_IP=192.168.98.205
 EOF
 sudo systemctl reboot
 # sudo systemctl poweroff
 # Stop-VM k8s5
+
+# 配置k8s1 ip
+Start-VM k8s1
+ssh huang@192.168.98.201
+cat <<EOF | sudo tee -a /etc/environment
+NODE_IP=192.168.98.201
+EOF
+
+# 生成ssh key 用来使用scp 复制文件到其他节点, 非安装 kubernetes 必须
+# ssh-keygen
+# ssh-copy-id k8s2
+# ssh-copy-id k8s3
+# ssh-copy-id k8s4
+# ssh-copy-id k8s5
+
+sudo systemctl reboot
 ```
 
 ```powershell
@@ -485,6 +507,10 @@ ip addr
 
 ### 配置 HAProxy
 因为 keepalived 只提供高可用能力, 不具备负载均衡能力, 所以需要配置 HAProxy 为api server做负载均衡
+配置解析: 
++ APISERVER_DEST_PORT: 类似nginx 的监听端口, haproxy 对外提供服务的端口
++ server ${node-id} ${addr}:${APISERVER_SRC_PORT} 转发后端地址, 可以配置多个
+
 ```bash
 cat <<EOF | sudo tee /etc/haproxy/haproxy.cfg
 # /etc/haproxy/haproxy.cfg
@@ -554,3 +580,74 @@ journalctl -fu haproxy
 + apiserver-advertise-address: master集群的每个节点不同, 可以访问到每个master 服务节点各自的ip地址或者域名, 在这里三个节点分别是 k8s1, k8s2, k8s3
 + control-plane-endpoint: master集群的共享ip地址或者域名, 这里是负载均衡ip ${LOADBALANCE_VIP} 或域名 cluster-endpoint
 
+首先确保 keepalived master 是 k8s1 
+### 初始化 k8s1
+```bash
+# 这里使用ip地址, 如果使用域名则需要配置主机的host, 或者通过其他域名解析方案
+sudo kubeadm init --control-plane-endpoint ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP}
+# 上述命令会答应token 保留备用
+
+# 手工复制证书
+# sudo ssh-keygen
+# sudo ssh-copy-id huang@k8s2
+# sudo ssh-copy-id huang@k8s3
+
+cat <<"EOF" | tee ~/copy_cert.sh
+#!/bin/sh
+
+set -x
+
+CONTROL_PLANE_IPS="k8s2 k8s3"
+USER=huang
+pki_dir=/etc/kubernetes/pki
+for host in ${CONTROL_PLANE_IPS}; do
+  ssh "${USER}"@$host "rm -rf ~${pki_dir}"
+  ssh "${USER}"@$host "mkdir -p ~${pki_dir}/etcd"
+  scp ${pki_dir}/ca.crt "${USER}"@$host:~${pki_dir}/ca.crt
+  scp ${pki_dir}/ca.key "${USER}"@$host:~${pki_dir}/ca.key
+  scp ${pki_dir}/sa.key "${USER}"@$host:~${pki_dir}/sa.key
+  scp ${pki_dir}/sa.pub "${USER}"@$host:~${pki_dir}/sa.pub
+  scp ${pki_dir}/front-proxy-ca.crt "${USER}"@$host:~${pki_dir}/front-proxy-ca.crt
+  scp ${pki_dir}/front-proxy-ca.key "${USER}"@$host:~${pki_dir}/front-proxy-ca.key
+  scp ${pki_dir}/etcd/ca.crt "${USER}"@$host:~${pki_dir}/etcd/ca.crt
+  # 如果你正使用外部 etcd, 忽略下一行
+  scp ${pki_dir}/etcd/ca.key "${USER}"@$host:~${pki_dir}/etcd/ca.key
+done
+EOF
+
+chmod +x ~/copy_cert.sh
+sudo ~/copy_cert.sh
+```
+
+### 初始化其他控制节点 (k8s2, k8s3)
+```bash
+# sudo kubeadm reset -f
+sudo cp ~/etc/kubernetes/pki/* /etc/kubernetes/pki -r
+
+# 将XXXXXX 替换为实际值: 
+# token: 在init时会创建一个: sudo kubeadm token list, 通常在24小时后过期, 需要重新创建: sudo kubeadm token create --print-join-command
+# discovery-token-ca-cert-hash: init时会打印, 后续可以通过命令获取: openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+sudo kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
+        --discovery-token-ca-cert-hash XXXXXX \
+        --control-plane
+```
+
+### 初始化数据节点 (k8s4, k8s5)
+```bash
+sudo mkdir -p /etc/kubernetes/pki
+sudo kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
+        --discovery-token-ca-cert-hash XXXXXX \
+        --control-plane
+```
+
+### 重置集群
+重置到 init 或 join 之前的状态
+```bash
+sudo kubeadm reset
+# 如果存在，则删除
+sudo rm -rf /etc/cni/net.d
+# 如果使用ipvs 则需要清除规则
+sudo ipvsadm --clear
+# 清空用户配置
+rm -f $HOME/.kube/config/*
+```

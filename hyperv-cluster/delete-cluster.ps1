@@ -5,9 +5,9 @@
 
 # 删除集群
 Remove-VM k8s* -Force
-Remove-Item -Path $cluster_path -Recurse -Force
+Remove-Item -Path $cluster_path/k8s* -Recurse -Force
 
 # 删除nat网络
-Remove-NetNat -Name $nat_net -Force
+Remove-NetNat -Name $nat_net
 # 删除交换机
 Remove-VMSwitch -SwitchName $vm_switch -Force

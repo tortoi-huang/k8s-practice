@@ -6,6 +6,7 @@
 # 虚拟机k8s1
 $vm_name = "k8s1"
 New-VM -Name $vm_name -MemoryStartupBytes $vm_master_mem -Path "$cluster_path" -Generation $vm_gen -SwitchName $vm_switch
+Set-VMMemory $vm_name -DynamicMemoryEnabled $false
 Set-VMProcessor $vm_name -Count $vm_master_cpus -Reserve 10 -Maximum 75 -RelativeWeight 200
 
 New-VHD -Path "$cluster_path\$vm_name\$disk_dir\$vm_name.vhdx" -SizeBytes 127GB

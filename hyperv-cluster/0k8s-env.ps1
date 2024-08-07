@@ -18,5 +18,5 @@ $global:nat_gateway = "192.168.98.1"
 
 $global:vm_master_mem = 2GB
 $global:vm_master_cpus = 2
-$global:vm_node_mem = 4GB
+$global:vm_node_mem = 3GB
 $global:vm_node_cups = 4
