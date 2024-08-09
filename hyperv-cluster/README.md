@@ -16,7 +16,8 @@
 虚拟机可以通过 nat 访问网络，并搭建五个节点的 kubernetes 集群。
 
 ## 宿主机配置
-复制 config 文件到宿主机用户目录 ~/.ssh/ 下
+### 配置宿主机 ssh 访问虚拟机
+复制 [config](./conf/config) 文件到宿主机用户目录 ~/.ssh/ 下
 
 ```powershell
 # 看是否已经有默认的ssh 密钥，如果没有则使用生成
@@ -27,19 +28,19 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 ```
 ## 创建交换机
 ```bash
-.\1k8s-init.ps1
+.\script\host\1k8s-init.ps1
 ```
 
 ## 创建虚拟机
 ```powershell
-.\2k8s1.ps1
+.\script\host\2k8s1.ps1
 # 启动虚拟机
 Start-VM k8s1
 ```
 ## 安装和配置虚拟机
 安装时注意选择手动设置ip地址，避免安装好后无法获取ip和无法连接网络
 subnet: 192.168.98.0/24
-adress: 192.168.98.201
+adress: 192.168.98.200
 gateway: 192.168.98.1
 name server: 223.5.5.5,1.1.1.1
 
@@ -49,61 +50,20 @@ ubuntu软件源: http://mirrors.aliyun.com/ubuntu
 
 ### 配置ubuntu
 ```bash
-# ssh huang@192.168.98.201
+# ssh huang@192.168.98.200
 
 sudo apt update
 sudo apt upgrade -y
 # 安装和更新 ubuntu 非常耗时, 建议此时备份虚拟磁盘模板
 
-# 查看可用交换分区
-swapon
-# 关闭交换分区, 删除或者注释行: swap.img
-sudo sed -i "s/^\/swap.img/# \/swap.img/" /etc/fstab
-# 禁止 ipv4 地址转发
-sudo sed -i "s/#net\.ipv4\.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
-# 临时的，重启不生效
-# sudo sysctl -w net.ipv4.ip_forward=1
-# 以下命令同样效果
-# echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
+cd ~
+git clone https://github.com/tortoi-huang/k8s-practice.git
 
-# 配置环境变量
-sudo tee -a /etc/profile <<-"EOF"
-export APISERVER_DEST_PORT=16443
-export APISERVER_SRC_PORT=6443
-export APISERVER_ADVERTISE_ADDRESS=cluster-endpoint
-export LOADBALANCE_VIP=192.168.98.101
-export CONTROL_NODE1=192.168.98.201
-export CONTROL_NODE2=192.168.98.202
-export CONTROL_NODE3=192.168.98.203
-export DATA_NODE1=192.168.98.204
-export DATA_NODE2=192.168.98.205
-EOF
+chmod +x k8s-practice/hyperv-cluster/script/vm/*.sh
+k8s-practice/hyperv-cluster/script/vm/0common-conf.sh
 
-logout
-# 依赖前面配置需要重新登录
-# 配置hosts文件
-sudo sed /k8s1/d /etc/hosts -i
-cat <<EOF | sudo tee -a /etc/hosts
-
-${CONTROL_NODE1} k8s1
-${CONTROL_NODE2} k8s2
-${CONTROL_NODE3} k8s3
-${DATA_NODE1} k8s4
-${DATA_NODE2} k8s5
-${LOADBALANCE_VIP} cluster-endpoint
-EOF
-# echo -e "\n192.168.98.201 k8s1\n192.168.98.202 k8s2\n192.168.98.203 k8s3\n192.168.98.204 k8s4\n192.168.98.205 k8s5\n192.168.98.101 cluster-endpoint"| sudo tee -a /etc/hosts
-# 检查主机唯一标识
-ip link
-sudo cat /sys/class/dmi/id/product_uuid
-
-# 修改 dns 配置
-# sudo sed -i s/^#DNS=/DNS=1.1.1.1,223.5.5.5/ /etc/systemd/resolved.conf
-# sudo systemctl restart systemd-resolved.service
-
-# 重启
-# sudo systemctl poweroff
-sudo systemctl reboot
+# 检查系统 对 cgroup v2 的支持, 输出 ： cgroup2fs
+# stat -fc %T /sys/fs/cgroup/
 ```
 
 ## 安装软件负载均衡
@@ -111,137 +71,46 @@ sudo systemctl reboot
 
 这里使用 keepalived + HAProxy 方案:
 ```bash
-# sudo apt install linux-headers-$(uname -r) -y
-sudo apt install keepalived -y
-sudo apt install haproxy -y
+k8s-practice/hyperv-cluster/script/vm/1package-ha.sh
 ```
 
-## 安装kubernetes及其依赖
-安装 go
+## 安装 kubernetes 及其依赖
+安装 go, runc, cni, containerd
 ```bash
-# 安装容器运行时
-# 安装go, 下载并设置环境变量
-# curl -O https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz
-# sudo rm -rf /usr/local/go
-# sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
-wget -qO- https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz | sudo tar -C /usr/local -xvz
-echo -e "\nexport GOPATH=\$HOME/go\nexport GOROOT=/usr/local/go" | sudo tee -a /etc/profile
-# 生成软连接到 /usr/local/bin, 因为 sudo 无法读取path变量, 不能通过设置path变量方式处理
-sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+k8s-practice/hyperv-cluster/script/vm/2package-run.sh
 ```
 
-### 安装 runc
-```bash
-#安装runc, 通过源码编译安装, 参考: https://github.com/opencontainers/runc
-sudo apt install libseccomp-dev -y
-sudo apt install make git gcc pkg-config -y
-mkdir -p $GOPATH/src/github.com/opencontainers
-cd $GOPATH/src/github.com/opencontainers
-git clone https://github.com/opencontainers/runc
-cd runc
-make
-sudo make install
-```
-
-### 安装 cni 网络插件
-```bash
-sudo mkdir -p /opt/cni/bin
-# 下载 cni 网络插件, 似乎curl无法下载, 因为该地址会返回一个302
-wget -qO- https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz | sudo tar -C /opt/cni/bin -xvz 
-# sudo tar -xvf cni-plugins-linux-amd64-v1.5.1.tgz -C /opt/cni/bin
-echo -e "export CNI_PATH=/opt/cni/bin" | sudo tee -a /etc/profile
-
-```
-
-### 安装 containerd 运行时
-```bash
-# 安装 containerd 容器运行时, https://github.com/containerd/containerd/blob/main/docs/getting-started.md
-wget -qO- https://github.com/containerd/containerd/releases/download/v1.7.19/containerd-1.7.19-linux-amd64.tar.gz | sudo tar Cxzv /usr/local 
-# 解压可执行文件到 /usr/local/bin, 实际可以解压到任意目录然后通过软连接创建到 /usr/local/bin
-# sudo tar Cxzvf /usr/local containerd-1.7.19-linux-amd64.tar.gz
-# 使用系统服务配置systemd作为默认的cgroup管理程序
-sudo mkdir /usr/local/lib/systemd/system/ -p
-sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -O /usr/local/lib/systemd/system/containerd.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now containerd
-```
-
-配置 containerd 
+### 配置 containerd 
 [参考:](https://github.com/containerd/containerd/blob/main/docs/hosts.md)
 生成默认的配置文件，避免的手工编写麻烦
 ```bash
-sudo mkdir -p /etc/containerd/certs.d/_default /etc/containerd/certs.d/docker.io /etc/containerd/certs.d/registry.k8s.io
-
-# journalctl -fu containerd
-# containerd 配置文件
-sudo tee /etc/containerd/config.toml <<-"EOF"
-version = 2
-
-[plugins]
-  [plugins."io.containerd.grpc.v1.cri"]
-    [plugins."io.containerd.grpc.v1.cri".registry]
-      config_path = "/etc/containerd/certs.d"
-EOF
-
-# 默认仓库配置
-sudo tee /etc/containerd/certs.d/_default/hosts.toml <<-"EOF"
-[host."https://registry.tortoi.top"]
-  capabilities = ["pull", "resolve"]
-EOF
-
-# docker 仓库配置
-sudo tee /etc/containerd/certs.d/docker.io/hosts.toml <<-"EOF"
-server = "https://docker.io"
-
-[host."https://registry.tortoi.top"]
-  capabilities = ["pull", "resolve"]
-EOF
-
-# k8s 仓库配置
-sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<-"EOF"
-server = "https://registry.k8s.io"
-
-[host."https://k8s.tortoi.top"]
-  capabilities = ["pull", "resolve"]
-EOF
+k8s-practice/hyperv-cluster/script/vm/3config-run.sh
 
 sudo systemctl restart containerd
 # 查看生效的配置
 # containerd config dump
+
+# 确认 systemdCgroup: true
+# 从单独的 terminal 启动下面程序
+sudo /usr/sbin/execsnoop-bpfcc -n runc
+# 然后创建容器 查看上述命令输出有没有包含systemd
+sudo ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/hello-world:latest
+sudo ctr c create docker.io/library/hello-world:latest hw1
+sudo ctr t start hw1
+sudo ctr c del hw1
+
+# 看起来 cgroup 管理程序没有使用 systemd ？
+sudo crictl info|grep systemd
 ```
 
 ### 安装 kubelet 及相关工具
 ```bash
-# 安装kubernetes 依赖工具
-sudo apt install -y apt-transport-https gpg
-# 下载软件包仓库签名， 这里版本不重要，所有版本的前面都是一样的
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-# 添加k8s软件仓库
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update
-
-# 安装 kubelet kubeadm kubectl
-sudo apt install -y kubelet kubeadm kubectl
-# 标记为hold 防止自动更新
-sudo apt-mark hold kubelet kubeadm kubectl
-
-sudo systemctl daemon-reload
-sudo systemctl restart kubelet
+k8s-practice/hyperv-cluster/script/vm/4package-run.sh
 
 # 查看 kubelet 运行状态, 此处状态应该在不断重启中
 sudo systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
-
-# 配置crictl, 可以不配置， crictl会搜索到系统上唯一的运行时, 如果安装了多个运行时则需要配置选择一个
-sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<-"EOF"
-runtime-endpoint: "unix:///run/containerd/containerd.sock"
-image-endpoint: "unix:///run/containerd/containerd.sock"
-timeout: 0
-debug: false
-pull-image-on-create: false
-disable-pull-on-run: false
-EOF
 
 ```
 
@@ -249,92 +118,52 @@ EOF
 
 ```bash
 # 因为要复制磁盘, 使用命令stop-vm 或者在hyper-v控制台上优雅关机, 确保模板机的快照合并到虚拟磁盘, 在虚拟机内部使用linux命令关机是不会合并快照的.
-.\3k8s-clone.ps1
+.\script\host\3k8s-clone.ps1
 ```
 
 ### 配置各个虚拟机的ip地址
 因为克隆了模板机的 ip 配置会有 ip 冲突，需要逐个虚拟机启动进行配置
 ```bash
+
+# 配置k8s1 ip
+k8s-practice/hyperv-cluster/script/vm/init-node3.sh
+
 # k8s1 为安装工作主机, 依赖其他主机启动，最后配置
 # 配置k8s2 ip
-Start-VM k8s2
-ssh huang@192.168.98.201
-# sudo sed -i "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/cloud/cloud.cfg.d/90-installer-network.cfg
-sudo sed "s/192.168.98.201\/24/192.168.98.202\/24/g" /etc/netplan/50-cloud-init.yaml -i
-echo k8s2 | sudo tee /etc/hostname
-
-sudo tee -a /etc/profile <<-EOF
-export NODE_IP=192.168.98.202
-EOF
-sudo systemctl reboot
+# Start-VM k8s2
+# ssh huang@192.168.98.200
+k8s-practice/hyperv-cluster/script/vm/init-node2.sh
 # 检查主机唯一标识
 ip link
 sudo cat /sys/class/dmi/id/product_uuid
-# sudo systemctl poweroff
-# Stop-VM k8s2
 
 # 配置k8s3 ip
-Start-VM k8s3
-ssh huang@192.168.98.201
-sudo sed "s/192.168.98.201\/24/192.168.98.203\/24/g" /etc/netplan/50-cloud-init.yaml -i
-echo k8s3 | sudo tee /etc/hostname
-
-sudo tee -a /etc/profile <<-EOF
-NODE_IP=192.168.98.203
-EOF
-sudo systemctl reboot
-# sudo systemctl poweroff
-# Stop-VM k8s3
+# Start-VM k8s3
+# ssh huang@192.168.98.200
+k8s-practice/hyperv-cluster/script/vm/init-node3.sh
 
 # 配置k8s4 ip
-Start-VM k8s4
-ssh huang@192.168.98.201
-sudo sed "s/192.168.98.201\/24/192.168.98.204\/24/g" /etc/netplan/50-cloud-init.yaml -i
-echo k8s4 | sudo tee /etc/hostname
-
-sudo tee -a /etc/profile <<-EOF
-NODE_IP=192.168.98.204
-EOF
-sudo systemctl reboot
-# sudo systemctl poweroff
-# Stop-VM k8s4
+# Start-VM k8s4
+# ssh huang@192.168.98.200
+k8s-practice/hyperv-cluster/script/vm/init-node4.sh
 
 # 配置k8s5 ip
-Start-VM k8s5
-ssh huang@192.168.98.201
-sudo sed "s/192.168.98.201\/24/192.168.98.205\/24/g" /etc/netplan/50-cloud-init.yaml -i
-echo k8s5 | sudo tee /etc/hostname
-
-sudo tee -a /etc/profile <<-EOF
-NODE_IP=192.168.98.205
-EOF
-sudo systemctl reboot
-# sudo systemctl poweroff
-# Stop-VM k8s5
-
-# 配置k8s1 ip
-Start-VM k8s1
-ssh huang@192.168.98.201
-echo k8s1 | sudo tee /etc/hostname
-sudo tee -a /etc/profile <<-EOF
-NODE_IP=192.168.98.201
-EOF
+# Start-VM k8s5
+# ssh huang@192.168.98.200
+k8s-practice/hyperv-cluster/script/vm/init-node5.sh
 
 # 生成ssh key 用来使用scp 复制文件到其他节点, 非安装 kubernetes 必须
-# ssh-keygen
-# ssh-copy-id huang@k8s2
-# ssh-copy-id huang@k8s3
-# ssh-copy-id huang@k8s4
-# ssh-copy-id huang@k8s5
-
-sudo systemctl reboot
+# sudo ssh-keygen
+# sudo ssh-copy-id huang@k8s2
+# sudo ssh-copy-id huang@k8s3
+# sudo ssh-copy-id huang@k8s4
+# sudo ssh-copy-id huang@k8s5
 ```
 
 ```powershell
 remove-item $HOME\.ssh\known_hosts
 ```
-配置免密登录
-
+宿主机配置免密登录, gitbash
 ```bash
 # # ssh-keygen
 # ssh-copy-id k8s1
@@ -589,6 +418,131 @@ journalctl -fu haproxy
 ```
 
 ## 配置 etcd
+通常在执行 kubeadmin init 之前 kubelet 是没有运行的, 如果需要 使用 kubeadmin 创建 etcd 集群, 则需要在 kubeadmin init 之前先将 kubelet 运行起来。这里需要配置一个更高优先级的 kubelet 服务配置文件, 在 k8s1, k8s2, k8s3上执行
+```bash
+sudo mkdir /etc/systemd/system/kubelet.service.d
+
+sudo tee /etc/systemd/system/kubelet.service.d/kubelet.conf <<-"EOF"
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    enabled: false
+authorization:
+  mode: AlwaysAllow
+cgroupDriver: systemd
+address: 127.0.0.1
+containerRuntimeEndpoint: unix:///var/run/containerd/containerd.sock
+staticPodPath: /etc/kubernetes/manifests
+EOF
+
+sudo tee /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf <<-"EOF"
+[Service]
+ExecStart=
+ExecStart=/usr/bin/kubelet --config=/etc/systemd/system/kubelet.service.d/kubelet.conf
+Restart=always
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+```
+
+通过脚本创建 etcd 配置文件, 在 k8s1 上执行
+```bash
+# 使用你的主机 IP 更新 HOST0、HOST1 和 HOST2 的 IP 地址
+export HOST0=192.168.98.201
+export HOST1=192.168.98.202
+export HOST2=192.168.98.203
+
+# 使用你的主机名更新 NAME0、NAME1 和 NAME2
+export NAME0="k8s1"
+export NAME1="k8s2"
+export NAME2="k8s3"
+
+# 创建临时目录来存储将被分发到其它主机上的文件
+mkdir -p /tmp/${HOST0}/ /tmp/${HOST1}/ /tmp/${HOST2}/
+
+HOSTS=(${HOST0} ${HOST1} ${HOST2})
+NAMES=(${NAME0} ${NAME1} ${NAME2})
+
+for i in "${!HOSTS[@]}"; do
+HOST=${HOSTS[$i]}
+NAME=${NAMES[$i]}
+cat << EOF > /tmp/${HOST}/kubeadmcfg.yaml
+---
+apiVersion: "kubeadm.k8s.io/v1beta3"
+kind: InitConfiguration
+nodeRegistration:
+    name: ${NAME}
+localAPIEndpoint:
+    advertiseAddress: ${HOST}
+---
+apiVersion: "kubeadm.k8s.io/v1beta3"
+kind: ClusterConfiguration
+etcd:
+    local:
+        serverCertSANs:
+        - "${HOST}"
+        peerCertSANs:
+        - "${HOST}"
+        extraArgs:
+            initial-cluster: ${NAMES[0]}=https://${HOSTS[0]}:2380,${NAMES[1]}=https://${HOSTS[1]}:2380,${NAMES[2]}=https://${HOSTS[2]}:2380
+            initial-cluster-state: new
+            name: ${NAME}
+            listen-peer-urls: https://${HOST}:2380
+            listen-client-urls: https://${HOST}:2379
+            advertise-client-urls: https://${HOST}:2379
+            initial-advertise-peer-urls: https://${HOST}:2380
+EOF
+done
+
+kubeadm init phase certs etcd-ca
+
+# 生成证书
+sudo kubeadm init phase certs etcd-server --config=/tmp/${HOST2}/kubeadmcfg.yaml
+sudo kubeadm init phase certs etcd-peer --config=/tmp/${HOST2}/kubeadmcfg.yaml
+sudo kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+sudo kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+sudo cp -R /etc/kubernetes/pki /tmp/${HOST2}/
+# 清理不可重复使用的证书
+sudo find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+
+sudo kubeadm init phase certs etcd-server --config=/tmp/${HOST1}/kubeadmcfg.yaml
+sudo kubeadm init phase certs etcd-peer --config=/tmp/${HOST1}/kubeadmcfg.yaml
+sudo kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+sudo kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+sudo cp -R /etc/kubernetes/pki /tmp/${HOST1}/
+sudo find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+
+sudo kubeadm init phase certs etcd-server --config=/tmp/${HOST0}/kubeadmcfg.yaml
+sudo kubeadm init phase certs etcd-peer --config=/tmp/${HOST0}/kubeadmcfg.yaml
+sudo kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+sudo kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+# 不需要移动 certs 因为它们是给 HOST0 使用的
+
+# 清理不应从此主机复制的证书
+sudo find /tmp/${HOST2} -name ca.key -type f -delete
+sudo find /tmp/${HOST1} -name ca.key -type f -delete
+
+# 复制证书到 k8s2, k8s3
+sudo scp -r /tmp/${HOST1}/* huang@${HOST1}:
+sudo scp -r /tmp/${HOST2}/* huang@${HOST2}:
+mv /tmp/${HOST0}/kubeadmcfg.yaml ~/
+```
+
+分别到 k8s2 和 k8s3 上移动文件到/etc/
+```bash
+sudo chown -R root:root pki
+sudo mv pki /etc/kubernetes/
+```
+
+
+分别到 k8s1, k8s2, k8s3 上移动文件到/etc/
+```bash
+sudo kubeadm init phase etcd local --config=$HOME/kubeadmcfg.yaml
+```
 
 ## 初始化 kubernetes 集群
 初始化高可用 kubernetes 集群需要设置两个参数: 
