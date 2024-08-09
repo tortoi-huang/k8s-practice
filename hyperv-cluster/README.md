@@ -194,153 +194,7 @@ keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如�
 
 在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
 ```bash
-sudo tee /etc/keepalived/check_apiserver.sh <<-EOF
-#!/bin/sh
-
-errorExit() {
-    echo "*** $*" 1>&2
-    exit 1
-}
-
-curl -sfk --max-time 2 https://localhost:${APISERVER_SRC_PORT}/healthz -o /dev/null || errorExit "Error GET https://localhost:${APISERVER_SRC_PORT}/healthz"
-EOF
-
-sudo chmod +x /etc/keepalived/check_apiserver.sh
-```
-
-#### 配置 k8s1
-```bash
-# 配置 keepalived
-sudo tee /etc/keepalived/keepalived.conf <<-EOF
-! /etc/keepalived/keepalived.conf
-! Configuration File for keepalived
-global_defs {
-    router_id LVS_DEVEL
-}
-vrrp_script check_apiserver {
-  script "/etc/keepalived/check_apiserver.sh"
-  interval 3
-  weight -2
-  fall 10
-  rise 2
-}
-
-vrrp_instance VI_1 {
-    state MASTER 
-    interface eth0
-    virtual_router_id 51
-    priority 102
-    authentication {
-        auth_type PASS
-        auth_pass 42
-    }
-    unicast_src_ip ${CONTROL_NODE1}/24
-    unicast_peer {
-        ${CONTROL_NODE2}/24
-        ${CONTROL_NODE3}/24
-    }
-    virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
-    }
-    track_script {
-        check_apiserver
-    }
-}
-EOF
-
-sudo systemctl restart keepalived
-
-# 查看 eth0 上的虚拟ip地址是否配置成功
-ip addr
-```
-
-#### 配置 k8s2
-```bash
-# 配置 keepalived
-sudo tee /etc/keepalived/keepalived.conf <<-EOF
-! /etc/keepalived/keepalived.conf
-! Configuration File for keepalived
-global_defs {
-    router_id LVS_DEVEL
-}
-vrrp_script check_apiserver {
-  script "/etc/keepalived/check_apiserver.sh"
-  interval 3
-  weight -2
-  fall 10
-  rise 2
-}
-
-vrrp_instance VI_1 {
-    state BACKUP 
-    interface eth0
-    virtual_router_id 51
-    priority 101
-    authentication {
-        auth_type PASS
-        auth_pass 42
-    }
-    unicast_src_ip ${CONTROL_NODE2}/24
-    unicast_peer {
-        ${CONTROL_NODE1}/24
-        ${CONTROL_NODE3}/24
-    }
-    virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
-    }
-    track_script {
-        check_apiserver
-    }
-}
-EOF
-
-sudo systemctl restart keepalived
-
-# 查看 eth0 上的虚拟ip地址是否配置成功
-ip addr
-```
-
-#### 配置 k8s3
-```bash
-# 配置 keepalived
-sudo tee /etc/keepalived/keepalived.conf <<-EOF
-! /etc/keepalived/keepalived.conf
-! Configuration File for keepalived
-global_defs {
-    router_id LVS_DEVEL
-}
-vrrp_script check_apiserver {
-  script "/etc/keepalived/check_apiserver.sh"
-  interval 3
-  weight -2
-  fall 10
-  rise 2
-}
-
-vrrp_instance VI_1 {
-    state BACKUP 
-    interface eth0
-    virtual_router_id 51
-    priority 100
-    authentication {
-        auth_type PASS
-        auth_pass 42
-    }
-    unicast_src_ip ${CONTROL_NODE3}/24
-    unicast_peer {
-        ${CONTROL_NODE1}/24
-        ${CONTROL_NODE2}/24
-    }
-    virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
-    }
-    track_script {
-        check_apiserver
-    }
-}
-EOF
-
-sudo systemctl restart keepalived
+k8s-practice/hyperv-cluster/script/vm/keepalived.sh
 
 # 查看 eth0 上的虚拟ip地址是否配置成功
 ip addr
@@ -356,64 +210,7 @@ nc -l ${APISERVER_SRC_PORT}
 + server ${node-id} ${addr}:${APISERVER_SRC_PORT} 转发后端地址, 可以配置多个
 
 ```bash
-sudo tee /etc/haproxy/haproxy.cfg <<-EOF
-# /etc/haproxy/haproxy.cfg
-#---------------------------------------------------------------------
-# Global settings
-#---------------------------------------------------------------------
-global
-    log stdout format raw local0
-    daemon
-
-#---------------------------------------------------------------------
-# common defaults that all the 'listen' and 'backend' sections will
-# use if not designated in their block
-#---------------------------------------------------------------------
-defaults
-    mode                    http
-    log                     global
-    option                  httplog
-    option                  dontlognull
-    option http-server-close
-    option forwardfor       except 127.0.0.0/8
-    option                  redispatch
-    retries                 1
-    timeout http-request    10s
-    timeout queue           20s
-    timeout connect         5s
-    timeout client          35s
-    timeout server          35s
-    timeout http-keep-alive 10s
-    timeout check           10s
-
-#---------------------------------------------------------------------
-# apiserver frontend which proxys to the control plane nodes
-#---------------------------------------------------------------------
-frontend apiserver
-    bind *:${APISERVER_DEST_PORT}
-    mode tcp
-    option tcplog
-    default_backend apiserverbackend
-
-#---------------------------------------------------------------------
-# round robin balancing for apiserver
-#---------------------------------------------------------------------
-backend apiserverbackend
-    option httpchk
-
-    http-check connect ssl
-    http-check send meth GET uri /healthz
-    http-check expect status 200
-
-    mode tcp
-    balance     roundrobin
-    
-    server 1 k8s1:${APISERVER_SRC_PORT} check verify none
-    server 2 k8s2:${APISERVER_SRC_PORT} check verify none
-    server 3 k8s3:${APISERVER_SRC_PORT} check verify none
-EOF
-
-sudo systemctl restart haproxy
+k8s-practice/hyperv-cluster/script/vm/haproxy.sh
 journalctl -fu haproxy
 ```
 
@@ -421,35 +218,16 @@ journalctl -fu haproxy
 通常在执行 kubeadmin init 之前 kubelet 是没有运行的, 如果需要 使用 kubeadmin 创建 etcd 集群, 则需要在 kubeadmin init 之前先将 kubelet 运行起来。这里需要配置一个更高优先级的 kubelet 服务配置文件, 在 k8s1, k8s2, k8s3上执行
 ```bash
 sudo mkdir /etc/systemd/system/kubelet.service.d
-
-sudo tee /etc/systemd/system/kubelet.service.d/kubelet.conf <<-"EOF"
-apiVersion: kubelet.config.k8s.io/v1beta1
-kind: KubeletConfiguration
-authentication:
-  anonymous:
-    enabled: false
-  webhook:
-    enabled: false
-authorization:
-  mode: AlwaysAllow
-cgroupDriver: systemd
-address: 127.0.0.1
-containerRuntimeEndpoint: unix:///var/run/containerd/containerd.sock
-staticPodPath: /etc/kubernetes/manifests
-EOF
-
-sudo tee /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf <<-"EOF"
-[Service]
-ExecStart=
-ExecStart=/usr/bin/kubelet --config=/etc/systemd/system/kubelet.service.d/kubelet.conf
-Restart=always
-EOF
+sudo cp conf/etc/systemd/system/kubelet.service.d/* /etc/systemd/system/kubelet.service.d
 
 sudo systemctl daemon-reload
 sudo systemctl restart kubelet
+
+# 通过脚本生成配置文件
+k8s-practice/hyperv-cluster/script/vm/etcd-config-gen.sh
 ```
 
-通过脚本创建 etcd 配置文件, 在 k8s1 上执行
+通过脚本创建 etcd 证书, 在 k8s1 上执行
 ```bash
 # 使用你的主机 IP 更新 HOST0、HOST1 和 HOST2 的 IP 地址
 export HOST0=192.168.98.201
@@ -463,40 +241,6 @@ export NAME2="k8s3"
 
 # 创建临时目录来存储将被分发到其它主机上的文件
 mkdir -p /tmp/${HOST0}/ /tmp/${HOST1}/ /tmp/${HOST2}/
-
-HOSTS=(${HOST0} ${HOST1} ${HOST2})
-NAMES=(${NAME0} ${NAME1} ${NAME2})
-
-for i in "${!HOSTS[@]}"; do
-HOST=${HOSTS[$i]}
-NAME=${NAMES[$i]}
-cat << EOF > /tmp/${HOST}/kubeadmcfg.yaml
----
-apiVersion: "kubeadm.k8s.io/v1beta3"
-kind: InitConfiguration
-nodeRegistration:
-    name: ${NAME}
-localAPIEndpoint:
-    advertiseAddress: ${HOST}
----
-apiVersion: "kubeadm.k8s.io/v1beta3"
-kind: ClusterConfiguration
-etcd:
-    local:
-        serverCertSANs:
-        - "${HOST}"
-        peerCertSANs:
-        - "${HOST}"
-        extraArgs:
-            initial-cluster: ${NAMES[0]}=https://${HOSTS[0]}:2380,${NAMES[1]}=https://${HOSTS[1]}:2380,${NAMES[2]}=https://${HOSTS[2]}:2380
-            initial-cluster-state: new
-            name: ${NAME}
-            listen-peer-urls: https://${HOST}:2380
-            listen-client-urls: https://${HOST}:2379
-            advertise-client-urls: https://${HOST}:2379
-            initial-advertise-peer-urls: https://${HOST}:2380
-EOF
-done
 
 kubeadm init phase certs etcd-ca
 
