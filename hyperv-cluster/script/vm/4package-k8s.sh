@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 遇到错误时停止执行后续语句
+set -e
+
 set -x
 
 # 安装kubernetes 依赖工具

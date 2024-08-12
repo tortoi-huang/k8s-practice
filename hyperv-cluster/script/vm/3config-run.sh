@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 遇到错误时停止执行后续语句
+set -e
+
 set -x
 script_dir="$(dirname "$0")"
 source $script_dir/env.profile
