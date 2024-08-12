@@ -1,6 +1,14 @@
 #!/bin/bash
 
+# 遇到错误时停止执行后续语句
+set -e
+
 set -x
+
+if [ "$EUID" -ne 0 ]; then
+  echo "此脚本必须以特权身份（root用户）执行。" >&2
+  exit 1
+fi
 
 # 安装kubernetes 依赖工具
 sudo apt install -y apt-transport-https gpg

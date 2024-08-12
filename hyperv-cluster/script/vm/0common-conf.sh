@@ -1,13 +1,25 @@
 #!/bin/bash
 
+# 遇到错误时停止执行后续语句
+set -e
+
 script_dir="$(dirname "$0")"
-source script_dir/env.profile
+source $script_dir/env.profile
+if [ ! -n "$LOADBALANCE_VIP" ]; then 
+    echo "'$script_dir/env.profile' not load"
+    exit 1
+fi
+
+set -x
 
 # 查看可用交换分区
-swapon
-# 关闭交换分区, 删除或者注释行: swap.img
+# swapon
+# 关闭交换分区, 删除或者注释行: swap.img, 避免重启 先临时关闭, 然后修改配置永久关闭
+# 临时
+swapoff -a
+# 永久
 sudo sed -i "s/^\/swap.img/# \/swap.img/" /etc/fstab
-systemctl daemon-reload
+
 # 禁止 ipv4 地址转发
 # sudo sed -i "s/#net\.ipv4\.ip_forward=1/net.ipv4.ip_forward=1/" /etc/sysctl.conf
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf

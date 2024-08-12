@@ -107,6 +107,7 @@ ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/hello-world:l
 ctr c create docker.io/library/hello-world:latest hw1
 ctr t start hw1
 ctr c del hw1
+ctr i del docker.io/library/hello-world:latest
 
 # 看起来 cgroup 管理程序没有使用 systemd ？
 crictl info|grep systemd
@@ -121,6 +122,8 @@ systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
 
+# 看起来 cgroup 管理程序没有使用 systemd ？
+crictl info|grep systemd
 ```
 
 ## 复制虚拟机
@@ -458,7 +461,7 @@ systemctl daemon-reload
 systemctl restart kubelet
 ```
 
-通过脚本创建 etcd 配置文件, 在 k8s1 上执行
+通过脚本创建 etcd 证书, 在 k8s1 上执行
 ```bash
 # 使用你的主机 IP 更新 HOST0、HOST1 和 HOST2 的 IP 地址
 export HOST0=192.168.98.201
@@ -472,40 +475,6 @@ export NAME2="k8s3"
 
 # 创建临时目录来存储将被分发到其它主机上的文件
 mkdir -p /tmp/${HOST0}/ /tmp/${HOST1}/ /tmp/${HOST2}/
-
-HOSTS=(${HOST0} ${HOST1} ${HOST2})
-NAMES=(${NAME0} ${NAME1} ${NAME2})
-
-for i in "${!HOSTS[@]}"; do
-HOST=${HOSTS[$i]}
-NAME=${NAMES[$i]}
-cat << EOF > /tmp/${HOST}/kubeadmcfg.yaml
----
-apiVersion: "kubeadm.k8s.io/v1beta3"
-kind: InitConfiguration
-nodeRegistration:
-    name: ${NAME}
-localAPIEndpoint:
-    advertiseAddress: ${HOST}
----
-apiVersion: "kubeadm.k8s.io/v1beta3"
-kind: ClusterConfiguration
-etcd:
-    local:
-        serverCertSANs:
-        - "${HOST}"
-        peerCertSANs:
-        - "${HOST}"
-        extraArgs:
-            initial-cluster: ${NAMES[0]}=https://${HOSTS[0]}:2380,${NAMES[1]}=https://${HOSTS[1]}:2380,${NAMES[2]}=https://${HOSTS[2]}:2380
-            initial-cluster-state: new
-            name: ${NAME}
-            listen-peer-urls: https://${HOST}:2380
-            listen-client-urls: https://${HOST}:2379
-            advertise-client-urls: https://${HOST}:2379
-            initial-advertise-peer-urls: https://${HOST}:2380
-EOF
-done
 
 kubeadm init phase certs etcd-ca
 
