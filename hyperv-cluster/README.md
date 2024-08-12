@@ -52,8 +52,17 @@ ubuntu软件源: http://mirrors.aliyun.com/ubuntu
 ```bash
 # ssh huang@192.168.98.200
 
-sudo apt update
-sudo apt upgrade -y
+# 启用 root 账号, kubernetes 需要 root 账号运行
+sudo passwd root
+sudo passwd -u root 
+sudo sed 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config -i
+sudo systemctl restart ssh
+logout
+
+ssh root@192.168.98.200
+apt update
+apt upgrade -y
+
 # 安装和更新 ubuntu 非常耗时, 建议此时备份虚拟磁盘模板
 
 cd ~
@@ -86,21 +95,21 @@ k8s-practice/hyperv-cluster/script/vm/2package-run.sh
 ```bash
 k8s-practice/hyperv-cluster/script/vm/3config-run.sh
 
-sudo systemctl restart containerd
+systemctl restart containerd
 # 查看生效的配置
 # containerd config dump
 
 # 确认 systemdCgroup: true
 # 从单独的 terminal 启动下面程序
-sudo /usr/sbin/execsnoop-bpfcc -n runc
+/usr/sbin/execsnoop-bpfcc -n runc
 # 然后创建容器 查看上述命令输出有没有包含systemd
-sudo ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/hello-world:latest
-sudo ctr c create docker.io/library/hello-world:latest hw1
-sudo ctr t start hw1
-sudo ctr c del hw1
+ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/hello-world:latest
+ctr c create docker.io/library/hello-world:latest hw1
+ctr t start hw1
+ctr c del hw1
 
 # 看起来 cgroup 管理程序没有使用 systemd ？
-sudo crictl info|grep systemd
+crictl info|grep systemd
 ```
 
 ### 安装 kubelet 及相关工具
@@ -108,7 +117,7 @@ sudo crictl info|grep systemd
 k8s-practice/hyperv-cluster/script/vm/4package-run.sh
 
 # 查看 kubelet 运行状态, 此处状态应该在不断重启中
-sudo systemctl status kubelet
+systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
 
@@ -126,7 +135,7 @@ sudo systemctl status kubelet
 ```bash
 
 # 配置k8s1 ip
-k8s-practice/hyperv-cluster/script/vm/init-node3.sh
+k8s-practice/hyperv-cluster/script/vm/init-node1.sh
 
 # k8s1 为安装工作主机, 依赖其他主机启动，最后配置
 # 配置k8s2 ip
@@ -135,7 +144,7 @@ k8s-practice/hyperv-cluster/script/vm/init-node3.sh
 k8s-practice/hyperv-cluster/script/vm/init-node2.sh
 # 检查主机唯一标识
 ip link
-sudo cat /sys/class/dmi/id/product_uuid
+cat /sys/class/dmi/id/product_uuid
 
 # 配置k8s3 ip
 # Start-VM k8s3
@@ -153,11 +162,11 @@ k8s-practice/hyperv-cluster/script/vm/init-node4.sh
 k8s-practice/hyperv-cluster/script/vm/init-node5.sh
 
 # 生成ssh key 用来使用scp 复制文件到其他节点, 非安装 kubernetes 必须
-# sudo ssh-keygen
-# sudo ssh-copy-id huang@k8s2
-# sudo ssh-copy-id huang@k8s3
-# sudo ssh-copy-id huang@k8s4
-# sudo ssh-copy-id huang@k8s5
+# ssh-keygen
+# ssh-copy-id huang@k8s2
+# ssh-copy-id huang@k8s3
+# ssh-copy-id huang@k8s4
+# ssh-copy-id huang@k8s5
 ```
 
 ```powershell
@@ -194,7 +203,7 @@ keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如�
 
 在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
 ```bash
-sudo tee /etc/keepalived/check_apiserver.sh <<-EOF
+tee /etc/keepalived/check_apiserver.sh <<-EOF
 #!/bin/sh
 
 errorExit() {
@@ -205,13 +214,13 @@ errorExit() {
 curl -sfk --max-time 2 https://localhost:${APISERVER_SRC_PORT}/healthz -o /dev/null || errorExit "Error GET https://localhost:${APISERVER_SRC_PORT}/healthz"
 EOF
 
-sudo chmod +x /etc/keepalived/check_apiserver.sh
+chmod +x /etc/keepalived/check_apiserver.sh
 ```
 
 #### 配置 k8s1
 ```bash
 # 配置 keepalived
-sudo tee /etc/keepalived/keepalived.conf <<-EOF
+tee /etc/keepalived/keepalived.conf <<-EOF
 ! /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 global_defs {
@@ -248,7 +257,7 @@ vrrp_instance VI_1 {
 }
 EOF
 
-sudo systemctl restart keepalived
+systemctl restart keepalived
 
 # 查看 eth0 上的虚拟ip地址是否配置成功
 ip addr
@@ -257,7 +266,7 @@ ip addr
 #### 配置 k8s2
 ```bash
 # 配置 keepalived
-sudo tee /etc/keepalived/keepalived.conf <<-EOF
+tee /etc/keepalived/keepalived.conf <<-EOF
 ! /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 global_defs {
@@ -294,7 +303,7 @@ vrrp_instance VI_1 {
 }
 EOF
 
-sudo systemctl restart keepalived
+systemctl restart keepalived
 
 # 查看 eth0 上的虚拟ip地址是否配置成功
 ip addr
@@ -303,7 +312,7 @@ ip addr
 #### 配置 k8s3
 ```bash
 # 配置 keepalived
-sudo tee /etc/keepalived/keepalived.conf <<-EOF
+tee /etc/keepalived/keepalived.conf <<-EOF
 ! /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 global_defs {
@@ -340,7 +349,7 @@ vrrp_instance VI_1 {
 }
 EOF
 
-sudo systemctl restart keepalived
+systemctl restart keepalived
 
 # 查看 eth0 上的虚拟ip地址是否配置成功
 ip addr
@@ -356,7 +365,7 @@ nc -l ${APISERVER_SRC_PORT}
 + server ${node-id} ${addr}:${APISERVER_SRC_PORT} 转发后端地址, 可以配置多个
 
 ```bash
-sudo tee /etc/haproxy/haproxy.cfg <<-EOF
+tee /etc/haproxy/haproxy.cfg <<-EOF
 # /etc/haproxy/haproxy.cfg
 #---------------------------------------------------------------------
 # Global settings
@@ -413,16 +422,16 @@ backend apiserverbackend
     server 3 k8s3:${APISERVER_SRC_PORT} check verify none
 EOF
 
-sudo systemctl restart haproxy
+systemctl restart haproxy
 journalctl -fu haproxy
 ```
 
 ## 配置 etcd
 通常在执行 kubeadmin init 之前 kubelet 是没有运行的, 如果需要 使用 kubeadmin 创建 etcd 集群, 则需要在 kubeadmin init 之前先将 kubelet 运行起来。这里需要配置一个更高优先级的 kubelet 服务配置文件, 在 k8s1, k8s2, k8s3上执行
 ```bash
-sudo mkdir /etc/systemd/system/kubelet.service.d
+mkdir /etc/systemd/system/kubelet.service.d
 
-sudo tee /etc/systemd/system/kubelet.service.d/kubelet.conf <<-"EOF"
+tee /etc/systemd/system/kubelet.service.d/kubelet.conf <<-"EOF"
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 authentication:
@@ -438,15 +447,15 @@ containerRuntimeEndpoint: unix:///var/run/containerd/containerd.sock
 staticPodPath: /etc/kubernetes/manifests
 EOF
 
-sudo tee /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf <<-"EOF"
+tee /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf <<-"EOF"
 [Service]
 ExecStart=
 ExecStart=/usr/bin/kubelet --config=/etc/systemd/system/kubelet.service.d/kubelet.conf
 Restart=always
 EOF
 
-sudo systemctl daemon-reload
-sudo systemctl restart kubelet
+systemctl daemon-reload
+systemctl restart kubelet
 ```
 
 通过脚本创建 etcd 配置文件, 在 k8s1 上执行
@@ -501,47 +510,47 @@ done
 kubeadm init phase certs etcd-ca
 
 # 生成证书
-sudo kubeadm init phase certs etcd-server --config=/tmp/${HOST2}/kubeadmcfg.yaml
-sudo kubeadm init phase certs etcd-peer --config=/tmp/${HOST2}/kubeadmcfg.yaml
-sudo kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
-sudo kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
-sudo cp -R /etc/kubernetes/pki /tmp/${HOST2}/
+kubeadm init phase certs etcd-server --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-peer --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+cp -R /etc/kubernetes/pki /tmp/${HOST2}/
 # 清理不可重复使用的证书
-sudo find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
 
-sudo kubeadm init phase certs etcd-server --config=/tmp/${HOST1}/kubeadmcfg.yaml
-sudo kubeadm init phase certs etcd-peer --config=/tmp/${HOST1}/kubeadmcfg.yaml
-sudo kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
-sudo kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
-sudo cp -R /etc/kubernetes/pki /tmp/${HOST1}/
-sudo find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+kubeadm init phase certs etcd-server --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-peer --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+cp -R /etc/kubernetes/pki /tmp/${HOST1}/
+find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
 
-sudo kubeadm init phase certs etcd-server --config=/tmp/${HOST0}/kubeadmcfg.yaml
-sudo kubeadm init phase certs etcd-peer --config=/tmp/${HOST0}/kubeadmcfg.yaml
-sudo kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
-sudo kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-server --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-peer --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm init phase certs etcd-healthcheck-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm init phase certs apiserver-etcd-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
 # 不需要移动 certs 因为它们是给 HOST0 使用的
 
 # 清理不应从此主机复制的证书
-sudo find /tmp/${HOST2} -name ca.key -type f -delete
-sudo find /tmp/${HOST1} -name ca.key -type f -delete
+find /tmp/${HOST2} -name ca.key -type f -delete
+find /tmp/${HOST1} -name ca.key -type f -delete
 
 # 复制证书到 k8s2, k8s3
-sudo scp -r /tmp/${HOST1}/* huang@${HOST1}:
-sudo scp -r /tmp/${HOST2}/* huang@${HOST2}:
+scp -r /tmp/${HOST1}/* huang@${HOST1}:
+scp -r /tmp/${HOST2}/* huang@${HOST2}:
 mv /tmp/${HOST0}/kubeadmcfg.yaml ~/
 ```
 
 分别到 k8s2 和 k8s3 上移动文件到/etc/
 ```bash
-sudo chown -R root:root pki
-sudo mv pki /etc/kubernetes/
+chown -R root:root pki
+mv pki /etc/kubernetes/
 ```
 
 
 分别到 k8s1, k8s2, k8s3 上移动文件到/etc/
 ```bash
-sudo kubeadm init phase etcd local --config=$HOME/kubeadmcfg.yaml
+kubeadm init phase etcd local --config=$HOME/kubeadmcfg.yaml
 ```
 
 ## 初始化 kubernetes 集群
@@ -554,9 +563,9 @@ sudo kubeadm init phase etcd local --config=$HOME/kubeadmcfg.yaml
 ```bash
 
 # 手工复制证书脚本, 需要执行 init 后才会生成证书
-# sudo ssh-keygen
-# sudo ssh-copy-id huang@k8s2
-# sudo ssh-copy-id huang@k8s3
+# ssh-keygen
+# ssh-copy-id huang@k8s2
+# ssh-copy-id huang@k8s3
 
 cat <<"EOF" | tee ~/copy_cert.sh
 #!/bin/sh
@@ -584,29 +593,29 @@ EOF
 chmod +x ~/copy_cert.sh
 
 # 这里使用ip地址, 如果使用域名则需要配置主机的host, 或者通过其他域名解析方案
-sudo kubeadm init --control-plane-endpoint ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP}
+kubeadm init --control-plane-endpoint ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP}
 # 上述命令会答应token 保留备用
 
-sudo ~/copy_cert.sh
+~/copy_cert.sh
 ```
 
 ### 初始化其他控制节点 (k8s2, k8s3)
 ```bash
-# sudo kubeadm reset -f
-sudo cp ~/etc/kubernetes/pki/* /etc/kubernetes/pki -r
+# kubeadm reset -f
+cp ~/etc/kubernetes/pki/* /etc/kubernetes/pki -r
 
 # 将XXXXXX 替换为实际值: 
-# token: 在init时会创建一个: sudo kubeadm token list, 通常在24小时后过期, 需要重新创建: sudo kubeadm token create --print-join-command
+# token: 在init时会创建一个: kubeadm token list, 通常在24小时后过期, 需要重新创建: kubeadm token create --print-join-command
 # discovery-token-ca-cert-hash: init时会打印, 后续可以通过命令获取: openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
-sudo kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
+kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
         --discovery-token-ca-cert-hash XXXXXX \
         --control-plane
 ```
 
 ### 初始化数据节点 (k8s4, k8s5)
 ```bash
-sudo mkdir -p /etc/kubernetes/pki
-sudo kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
+mkdir -p /etc/kubernetes/pki
+kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
         --discovery-token-ca-cert-hash XXXXXX \
         --control-plane
 ```
@@ -614,11 +623,11 @@ sudo kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
 ### 重置集群
 重置到 init 或 join 之前的状态
 ```bash
-sudo kubeadm reset
+kubeadm reset
 # 如果存在，则删除
-sudo rm -rf /etc/cni/net.d
+rm -rf /etc/cni/net.d
 # 如果使用ipvs 则需要清除规则
-sudo ipvsadm --clear
+ipvsadm --clear
 # 清空用户配置
 rm -f $HOME/.kube/config/*
 ```

@@ -15,7 +15,7 @@ New-VMSwitch -SwitchName $vm_switch -SwitchType Internal
 New-NetIPAddress -IPAddress $nat_gateway -PrefixLength $nat_prefix_len -InterfaceAlias "vEthernet ($vm_switch)"
 # Get-NetIPAddress -InterfaceAlias "vEthernet ($vm_switch)"
 
-# 配置交换机nat转换 name 为任意字符串, 所有192.168.98.0/24 ip均转发到改网络
+# 配置交换机nat转换 name 为任意字符串, 所有192.168.98.0/24 ip均转发到改网络, 可以通过 ExternalIPInterfaceAddressPrefix 指定外部地址, 默认为空, 转发到系统默认上网网卡
 New-NetNat -Name $nat_net -InternalIPInterfaceAddressPrefix $nat_subnet
 
 # 查看已存在的nat网络
