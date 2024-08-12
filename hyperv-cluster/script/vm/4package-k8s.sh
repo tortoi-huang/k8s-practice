@@ -8,6 +8,11 @@ set -x
 if [ "$EUID" -ne 0 ]; then
   echo "此脚本必须以特权身份（root用户）执行。" >&2
   exit 1
+
+fi
+if command -v kubeadm&> /dev/null; then
+    echo "kubeadm 命令已经存在"
+    exit 1
 fi
 
 # 安装kubernetes 依赖工具
@@ -27,7 +32,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart kubelet
 
 # 配置crictl, 可以不配置， crictl会搜索到系统上唯一的运行时, 如果安装了多个运行时则需要配置选择一个
-sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<-"EOF"
+sudo tee /etc/crictl.yaml <<-"EOF"
 runtime-endpoint: "unix:///run/containerd/containerd.sock"
 image-endpoint: "unix:///run/containerd/containerd.sock"
 timeout: 0

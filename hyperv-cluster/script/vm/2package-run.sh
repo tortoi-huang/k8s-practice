@@ -5,6 +5,16 @@ set -e
 
 set -x
 
+if [ "$EUID" -ne 0 ]; then
+  echo "此脚本必须以特权身份（root用户）执行。" >&2
+  exit 1
+
+fi
+if command -v containerd&> /dev/null; then
+    echo "containerd 命令已经存在"
+    exit 1
+fi
+
 # 安装go, 下载并设置环境变量
 wget -qO- https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz | sudo tar -C /usr/local -xvz
 echo -e "\nexport GOPATH=\$HOME/go\nexport GOROOT=/usr/local/go" | sudo tee -a /etc/profile

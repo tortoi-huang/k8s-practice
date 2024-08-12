@@ -115,10 +115,10 @@ crictl info|grep systemd
 
 ### 安装 kubelet 及相关工具
 ```bash
-k8s-practice/hyperv-cluster/script/vm/4package-run.sh
+k8s-practice/hyperv-cluster/script/vm/4package-k8s.sh
 
-# 查看 kubelet 运行状态, 此处状态应该在不断重启中
-systemctl status kubelet
+# 查看 kubelet 运行状态, 此处状态应该在不断重启中, 需要执行init或者join后才会正常运行， 也可以增加一个优先的kubelet配置让它单独运行起来, 详见使用 kubeadmin 创建 etcd 集群
+sudo systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
 
