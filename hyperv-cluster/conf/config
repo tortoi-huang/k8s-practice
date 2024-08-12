@@ -1,15 +1,15 @@
 Host k8s1
     HostName 192.168.98.201
-    User huang
+    User root
 Host k8s2
     HostName 192.168.98.202
-    User huang
+    User root
 Host k8s3
     HostName 192.168.98.203
-    User huang
+    User root
 Host k8s4
     HostName 192.168.98.204
-    User huang
+    User root
 Host k8s5
     HostName 192.168.98.205
-    User huang
+    User root

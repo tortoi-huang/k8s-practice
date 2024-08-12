@@ -134,48 +134,41 @@ crictl info|grep systemd
 ```
 
 ### 配置各个虚拟机的ip地址
-因为克隆了模板机的 ip 配置会有 ip 冲突，需要逐个虚拟机启动进行配置
-```bash
-
+因为克隆了模板机的 ip 配置会有 ip 冲突，需要逐个虚拟机启动进行配置, 其中包含修改ip的命令执行很慢
+```powershell
 # 配置k8s1 ip
-k8s-practice/hyperv-cluster/script/vm/init-node1.sh
+Start-VM k8s1
+ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node1.sh"
 
 # k8s1 为安装工作主机, 依赖其他主机启动，最后配置
 # 配置k8s2 ip
-# Start-VM k8s2
-# ssh huang@192.168.98.200
-k8s-practice/hyperv-cluster/script/vm/init-node2.sh
+Start-VM k8s2
+ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node2.sh"
 # 检查主机唯一标识
 ip link
 cat /sys/class/dmi/id/product_uuid
 
 # 配置k8s3 ip
-# Start-VM k8s3
-# ssh huang@192.168.98.200
-k8s-practice/hyperv-cluster/script/vm/init-node3.sh
+Start-VM k8s3
+ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node3.sh"
 
 # 配置k8s4 ip
-# Start-VM k8s4
-# ssh huang@192.168.98.200
-k8s-practice/hyperv-cluster/script/vm/init-node4.sh
+Start-VM k8s4
+ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node4.sh"
 
 # 配置k8s5 ip
-# Start-VM k8s5
-# ssh huang@192.168.98.200
-k8s-practice/hyperv-cluster/script/vm/init-node5.sh
+Start-VM k8s5
+ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node5.sh"
 
 # 生成ssh key 用来使用scp 复制文件到其他节点, 非安装 kubernetes 必须
 # ssh-keygen
-# ssh-copy-id huang@k8s2
-# ssh-copy-id huang@k8s3
-# ssh-copy-id huang@k8s4
-# ssh-copy-id huang@k8s5
-```
-
-```powershell
+# ssh-copy-id root@k8s2
+# ssh-copy-id root@k8s3
+# ssh-copy-id root@k8s4
+# ssh-copy-id root@k8s5
 remove-item $HOME\.ssh\known_hosts
 ```
-宿主机配置免密登录, gitbash
+宿主机配置免密登录, powershell没有ssh-copy-id 使用gitbash
 ```bash
 # # ssh-keygen
 # ssh-copy-id k8s1
@@ -206,153 +199,8 @@ keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如�
 
 在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
 ```bash
-tee /etc/keepalived/check_apiserver.sh <<-EOF
-#!/bin/sh
-
-errorExit() {
-    echo "*** $*" 1>&2
-    exit 1
-}
-
-curl -sfk --max-time 2 https://localhost:${APISERVER_SRC_PORT}/healthz -o /dev/null || errorExit "Error GET https://localhost:${APISERVER_SRC_PORT}/healthz"
-EOF
-
-chmod +x /etc/keepalived/check_apiserver.sh
-```
-
-#### 配置 k8s1
-```bash
 # 配置 keepalived
-tee /etc/keepalived/keepalived.conf <<-EOF
-! /etc/keepalived/keepalived.conf
-! Configuration File for keepalived
-global_defs {
-    router_id LVS_DEVEL
-}
-vrrp_script check_apiserver {
-  script "/etc/keepalived/check_apiserver.sh"
-  interval 3
-  weight -2
-  fall 10
-  rise 2
-}
-
-vrrp_instance VI_1 {
-    state MASTER 
-    interface eth0
-    virtual_router_id 51
-    priority 102
-    authentication {
-        auth_type PASS
-        auth_pass 42
-    }
-    unicast_src_ip ${CONTROL_NODE1}/24
-    unicast_peer {
-        ${CONTROL_NODE2}/24
-        ${CONTROL_NODE3}/24
-    }
-    virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
-    }
-    track_script {
-        check_apiserver
-    }
-}
-EOF
-
-systemctl restart keepalived
-
-# 查看 eth0 上的虚拟ip地址是否配置成功
-ip addr
-```
-
-#### 配置 k8s2
-```bash
-# 配置 keepalived
-tee /etc/keepalived/keepalived.conf <<-EOF
-! /etc/keepalived/keepalived.conf
-! Configuration File for keepalived
-global_defs {
-    router_id LVS_DEVEL
-}
-vrrp_script check_apiserver {
-  script "/etc/keepalived/check_apiserver.sh"
-  interval 3
-  weight -2
-  fall 10
-  rise 2
-}
-
-vrrp_instance VI_1 {
-    state BACKUP 
-    interface eth0
-    virtual_router_id 51
-    priority 101
-    authentication {
-        auth_type PASS
-        auth_pass 42
-    }
-    unicast_src_ip ${CONTROL_NODE2}/24
-    unicast_peer {
-        ${CONTROL_NODE1}/24
-        ${CONTROL_NODE3}/24
-    }
-    virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
-    }
-    track_script {
-        check_apiserver
-    }
-}
-EOF
-
-systemctl restart keepalived
-
-# 查看 eth0 上的虚拟ip地址是否配置成功
-ip addr
-```
-
-#### 配置 k8s3
-```bash
-# 配置 keepalived
-tee /etc/keepalived/keepalived.conf <<-EOF
-! /etc/keepalived/keepalived.conf
-! Configuration File for keepalived
-global_defs {
-    router_id LVS_DEVEL
-}
-vrrp_script check_apiserver {
-  script "/etc/keepalived/check_apiserver.sh"
-  interval 3
-  weight -2
-  fall 10
-  rise 2
-}
-
-vrrp_instance VI_1 {
-    state BACKUP 
-    interface eth0
-    virtual_router_id 51
-    priority 100
-    authentication {
-        auth_type PASS
-        auth_pass 42
-    }
-    unicast_src_ip ${CONTROL_NODE3}/24
-    unicast_peer {
-        ${CONTROL_NODE1}/24
-        ${CONTROL_NODE2}/24
-    }
-    virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
-    }
-    track_script {
-        check_apiserver
-    }
-}
-EOF
-
-systemctl restart keepalived
+k8s-practice/hyperv-cluster/script/vm/keepalived.sh
 
 # 查看 eth0 上的虚拟ip地址是否配置成功
 ip addr
@@ -368,65 +216,11 @@ nc -l ${APISERVER_SRC_PORT}
 + server ${node-id} ${addr}:${APISERVER_SRC_PORT} 转发后端地址, 可以配置多个
 
 ```bash
-tee /etc/haproxy/haproxy.cfg <<-EOF
-# /etc/haproxy/haproxy.cfg
-#---------------------------------------------------------------------
-# Global settings
-#---------------------------------------------------------------------
-global
-    log stdout format raw local0
-    daemon
-
-#---------------------------------------------------------------------
-# common defaults that all the 'listen' and 'backend' sections will
-# use if not designated in their block
-#---------------------------------------------------------------------
-defaults
-    mode                    http
-    log                     global
-    option                  httplog
-    option                  dontlognull
-    option http-server-close
-    option forwardfor       except 127.0.0.0/8
-    option                  redispatch
-    retries                 1
-    timeout http-request    10s
-    timeout queue           20s
-    timeout connect         5s
-    timeout client          35s
-    timeout server          35s
-    timeout http-keep-alive 10s
-    timeout check           10s
-
-#---------------------------------------------------------------------
-# apiserver frontend which proxys to the control plane nodes
-#---------------------------------------------------------------------
-frontend apiserver
-    bind *:${APISERVER_DEST_PORT}
-    mode tcp
-    option tcplog
-    default_backend apiserverbackend
-
-#---------------------------------------------------------------------
-# round robin balancing for apiserver
-#---------------------------------------------------------------------
-backend apiserverbackend
-    option httpchk
-
-    http-check connect ssl
-    http-check send meth GET uri /healthz
-    http-check expect status 200
-
-    mode tcp
-    balance     roundrobin
-    
-    server 1 k8s1:${APISERVER_SRC_PORT} check verify none
-    server 2 k8s2:${APISERVER_SRC_PORT} check verify none
-    server 3 k8s3:${APISERVER_SRC_PORT} check verify none
-EOF
-
-systemctl restart haproxy
+k8s-practice/hyperv-cluster/script/vm/haproxy.sh
+# 查看日志
 journalctl -fu haproxy
+# 检查端口正常监听 
+lsof -i:16443
 ```
 
 ## 配置 etcd
@@ -531,47 +325,23 @@ kubeadm init phase etcd local --config=$HOME/kubeadmcfg.yaml
 ### 初始化 k8s1
 ```bash
 
+# 自动上传证书方式初始化
+k8s-practice/hyperv-cluster/script/vm/init-k8s-upload.sh
+
+# 如果不考虑上传证书则需要按如下方式在每个节点手工复制证书非常麻烦
 # 手工复制证书脚本, 需要执行 init 后才会生成证书
 # ssh-keygen
-# ssh-copy-id huang@k8s2
-# ssh-copy-id huang@k8s3
+# ssh-copy-id root@k8s2
+# ssh-copy-id root@k8s3
 
-cat <<"EOF" | tee ~/copy_cert.sh
-#!/bin/sh
+# k8s-practice/hyperv-cluster/script/vm/init-k8s-manul.sh
 
-set -x
-
-CONTROL_PLANE_IPS="k8s2 k8s3"
-USER=huang
-pki_dir=/etc/kubernetes/pki
-for host in ${CONTROL_PLANE_IPS}; do
-  ssh "${USER}"@$host "rm -rf ~${pki_dir}"
-  ssh "${USER}"@$host "mkdir -p ~${pki_dir}/etcd"
-  scp ${pki_dir}/ca.crt "${USER}"@$host:~${pki_dir}/ca.crt
-  scp ${pki_dir}/ca.key "${USER}"@$host:~${pki_dir}/ca.key
-  scp ${pki_dir}/sa.key "${USER}"@$host:~${pki_dir}/sa.key
-  scp ${pki_dir}/sa.pub "${USER}"@$host:~${pki_dir}/sa.pub
-  scp ${pki_dir}/front-proxy-ca.crt "${USER}"@$host:~${pki_dir}/front-proxy-ca.crt
-  scp ${pki_dir}/front-proxy-ca.key "${USER}"@$host:~${pki_dir}/front-proxy-ca.key
-  scp ${pki_dir}/etcd/ca.crt "${USER}"@$host:~${pki_dir}/etcd/ca.crt
-  # 如果你正使用外部 etcd, 忽略下一行
-  scp ${pki_dir}/etcd/ca.key "${USER}"@$host:~${pki_dir}/etcd/ca.key
-done
-EOF
-
-chmod +x ~/copy_cert.sh
-
-# 这里使用ip地址, 如果使用域名则需要配置主机的host, 或者通过其他域名解析方案
-kubeadm init --control-plane-endpoint ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP}
-# 上述命令会答应token 保留备用
-
-~/copy_cert.sh
 ```
 
 ### 初始化其他控制节点 (k8s2, k8s3)
 ```bash
 # kubeadm reset -f
-cp ~/etc/kubernetes/pki/* /etc/kubernetes/pki -r
+# cp ~/etc/kubernetes/pki/* /etc/kubernetes/pki -r
 
 # 将XXXXXX 替换为实际值: 
 # token: 在init时会创建一个: kubeadm token list, 通常在24小时后过期, 需要重新创建: kubeadm token create --print-join-command
