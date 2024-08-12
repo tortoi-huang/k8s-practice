@@ -98,9 +98,8 @@ sudo ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/hello-wo
 sudo ctr c create docker.io/library/hello-world:latest hw1
 sudo ctr t start hw1
 sudo ctr c del hw1
+sudo ctr i del docker.io/library/hello-world:latest
 
-# 看起来 cgroup 管理程序没有使用 systemd ？
-sudo crictl info|grep systemd
 ```
 
 ### 安装 kubelet 及相关工具
@@ -112,6 +111,8 @@ sudo systemctl status kubelet
 # 查看kubelet日志
 # journalctl -fu kubelet
 
+# 看起来 cgroup 管理程序没有使用 systemd ？
+sudo crictl info|grep systemd
 ```
 
 ## 复制虚拟机
