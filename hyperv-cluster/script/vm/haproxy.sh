@@ -2,6 +2,10 @@
 
 script_dir="$(dirname "$0")"
 source $script_dir/env.profile
+if [ ! -n "$LOADBALANCE_VIP" ]; then 
+    echo "'$script_dir/env.profile' not load"
+    exit 1
+fi
 
 sudo tee /etc/haproxy/haproxy.cfg <<-EOF
 # /etc/haproxy/haproxy.cfg
