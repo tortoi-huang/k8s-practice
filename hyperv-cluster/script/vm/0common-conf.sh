@@ -34,18 +34,20 @@ sudo sysctl --system
 # echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
 
 # 配置环境变量
-# sudo tee -a /etc/profile <<-"EOF"
-# export APISERVER_DEST_PORT=16443
-# export APISERVER_SRC_PORT=6443
-# export APISERVER_ADVERTISE_ADDRESS=cluster-endpoint
-# export LOADBALANCE_VIP=192.168.98.101
-# export CONTROL_NODE1=192.168.98.201
-# export CONTROL_NODE2=192.168.98.202
-# export CONTROL_NODE3=192.168.98.203
-# export DATA_NODE1=192.168.98.204
-# export DATA_NODE2=192.168.98.205
-# EOF
-# source /etc/profile
+sudo tee -a /etc/profile <<-EOF
+export APISERVER_DEST_PORT=${APISERVER_DEST_PORT}
+export APISERVER_SRC_PORT=${APISERVER_SRC_PORT}
+export APISERVER_ADVERTISE_ADDRESS=${APISERVER_ADVERTISE_ADDRESS}
+export LOADBALANCE_VIP=${LOADBALANCE_VIP}
+export CONTROL_NODE1=${CONTROL_NODE1}
+export CONTROL_NODE2=${CONTROL_NODE2}
+export CONTROL_NODE3=${CONTROL_NODE3}
+export DATA_NODE1=${DATA_NODE1}
+export DATA_NODE2=${DATA_NODE2}
+export MIRROR_DOCKER=${MIRROR_DOCKER}
+export MIRROR_K8S=${MIRROR_K8S}
+EOF
+source /etc/profile
 
 # 依赖前面配置需要重新登录
 # 配置hosts文件

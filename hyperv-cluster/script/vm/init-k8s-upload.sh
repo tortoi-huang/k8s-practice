@@ -1,9 +1,8 @@
+#!/bin/bash
 
-script_dir="$(dirname "$0")"
-source $script_dir/env.profile
-if [ ! -n "$LOADBALANCE_VIP" ]; then 
-    echo "'$script_dir/env.profile' not load"
+if [ ! -n "$APISERVER_ADVERTISE_ADDRESS" ]; then 
+    echo "variable: APISERVER_ADVERTISE_ADDRESS not load"
     exit 1
 fi
 
-kubeadm init --control-plane-endpoint ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP} --upload-certs
+kubeadm init --control-plane-endpoint ${APISERVER_ADVERTISE_ADDRESS}:${APISERVER_DEST_PORT} --apiserver-advertise-address ${NODE_IP} --upload-certs
