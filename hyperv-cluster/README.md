@@ -95,7 +95,7 @@ k8s-practice/hyperv-cluster/script/vm/2package-run.sh
 ```bash
 k8s-practice/hyperv-cluster/script/vm/3config-run.sh
 
-systemctl restart containerd
+# systemctl restart containerd
 # 查看生效的配置
 # containerd config dump
 
@@ -103,14 +103,11 @@ systemctl restart containerd
 # 从单独的 terminal 启动下面程序
 /usr/sbin/execsnoop-bpfcc -n runc
 # 然后创建容器 查看上述命令输出有没有包含systemd
-ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/hello-world:latest
-ctr c create docker.io/library/hello-world:latest hw1
-ctr t start hw1
-ctr c del hw1
-ctr i del docker.io/library/hello-world:latest
-
-# 看起来 cgroup 管理程序没有使用 systemd ？
-crictl info|grep systemd
+ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/nginx:1.27
+ctr c create docker.io/library/nginx:1.27 ngx
+ctr t start ngx
+ctr c del ngx
+# ctr i del docker.io/library/nginx:1.27
 ```
 
 ### 安装 kubelet 及相关工具
