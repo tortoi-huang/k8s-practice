@@ -15,11 +15,11 @@ version = 2
 [plugins]
   [plugins."io.containerd.grpc.v1.cri"]
     # systemd_cgroup = true
-    # [plugins."io.containerd.grpc.v1.cri".containerd]
-    #   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-    #     [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-    #       [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-    #         SystemdCgroup = true
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
 
     [plugins."io.containerd.grpc.v1.cri".registry]
       config_path = "/etc/containerd/certs.d"
@@ -50,3 +50,39 @@ server = "https://registry.k8s.io"
   capabilities = ["pull", "resolve"]
 EOF
 fi
+
+# 配置 containerd cni插件
+tee /etc/cni/net.d/10-containerd-net.conflist <<-EOF
+{
+  "cniVersion": "1.0.0",
+  "name": "containerd-net",
+  "plugins": [
+    {
+      "type": "bridge",
+      "bridge": "cni0",
+      "isGateway": true,
+      "ipMasq": true,
+      "promiscMode": true,
+      "ipam": {
+        "type": "host-local",
+        "ranges": [
+          [{
+            "subnet": "10.88.0.0/16"
+          }],
+          [{
+            "subnet": "2001:4860:4860::/64"
+          }]
+        ],
+        "routes": [
+          { "dst": "0.0.0.0/0" },
+          { "dst": "::/0" }
+        ]
+      }
+    },
+    {
+      "type": "portmap",
+      "capabilities": {"portMappings": true}
+    }
+  ]
+}
+EOF

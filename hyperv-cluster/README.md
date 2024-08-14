@@ -93,7 +93,9 @@ k8s-practice/hyperv-cluster/script/vm/2package-run.sh
 [参考:](https://github.com/containerd/containerd/blob/main/docs/hosts.md)
 生成默认的配置文件，避免的手工编写麻烦
 ```bash
-k8s-practice/hyperv-cluster/script/vm/3config-run.sh
+
+k8s-practice/hyperv-cluster/script/vm/3config-run-apt.sh
+# k8s-practice/hyperv-cluster/script/vm/3config-run.sh
 
 # systemctl restart containerd
 # 查看生效的配置
@@ -103,8 +105,8 @@ k8s-practice/hyperv-cluster/script/vm/3config-run.sh
 # 从单独的 terminal 启动下面程序
 /usr/sbin/execsnoop-bpfcc -n runc
 # 然后创建容器 查看上述命令输出有没有包含systemd
-ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/nginx:1.27
-ctr c create docker.io/library/nginx:1.27 ngx
+ctr i pull --hosts-dir "/etc/containerd/certs.d" docker.io/library/hello-world:latest
+ctr c create docker.io/library/hello-world:latest ngx
 ctr t start ngx
 ctr c del ngx
 # ctr i del docker.io/library/nginx:1.27

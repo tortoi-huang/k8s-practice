@@ -39,44 +39,9 @@ sudo mkdir -p /opt/cni/bin
 wget -qO- https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz | sudo tar -C /opt/cni/bin -xvz 
 echo -e "export CNI_PATH=/opt/cni/bin" | sudo tee -a /etc/profile
 source /etc/profile
-# 配置 containerd cni插件
-tee /etc/cni/net.d/10-containerd-net.conflist <<-EOF
-{
-  "cniVersion": "1.0.0",
-  "name": "containerd-net",
-  "plugins": [
-    {
-      "type": "bridge",
-      "bridge": "cni0",
-      "isGateway": true,
-      "ipMasq": true,
-      "promiscMode": true,
-      "ipam": {
-        "type": "host-local",
-        "ranges": [
-          [{
-            "subnet": "10.88.0.0/16"
-          }],
-          [{
-            "subnet": "2001:4860:4860::/64"
-          }]
-        ],
-        "routes": [
-          { "dst": "0.0.0.0/0" },
-          { "dst": "::/0" }
-        ]
-      }
-    },
-    {
-      "type": "portmap",
-      "capabilities": {"portMappings": true}
-    }
-  ]
-}
-EOF
 
 # 安装 containerd 容器运行时, https://github.com/containerd/containerd/blob/main/docs/getting-started.md
-wget -qO- https://github.com/containerd/containerd/releases/download/v1.7.19/containerd-1.7.19-linux-amd64.tar.gz | sudo tar Cxzv /usr/local 
+wget -qO- https://github.com/containerd/containerd/releases/download/v1.7.20/containerd-1.7.20-linux-amd64.tar.gz | sudo tar Cxzv /usr/local 
 # 使用系统服务配置systemd作为默认的cgroup管理程序
 sudo mkdir /usr/local/lib/systemd/system/ -p
 sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -O /usr/local/lib/systemd/system/containerd.service
