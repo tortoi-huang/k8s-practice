@@ -24,7 +24,8 @@ source /etc/profile
 ```
 ### 分别配置每个节点
 ```bash
-k8s-practice/hyperv-cluster/script/vm/init-nodeX.sh
+k8s-practice/cloud-vm/script/vm/init-nodeX.sh
+source /etc/profile
 ```
 
 ## 安装软件负载均衡

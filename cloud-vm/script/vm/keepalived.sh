@@ -27,6 +27,7 @@ control_nodes="${CONTROL_NODE1} ${CONTROL_NODE2} ${CONTROL_NODE3}"
 unicast_peers="${control_nodes/$NODE_IP/}"
 unicast_1=$(awk '{print $1}' <<< $unicast_peers)
 unicast_2=$(awk '{print $2}' <<< $unicast_peers)
+subnet=$(ip -o -f inet addr show|grep ${NODE_IP} | awk -F "[ /]+" '{print $5}')
 
 if [ "$CONTROL_NODE1" != "$NODE_IP" ]; then
 	v_state="BACKUP"
@@ -58,13 +59,13 @@ vrrp_instance VI_1 {
         auth_type PASS
         auth_pass 42
     }
-    unicast_src_ip ${NODE_IP}/24
+    unicast_src_ip ${NODE_IP}/${subnet}
     unicast_peer {
-        ${unicast_1}/24
-        ${unicast_2}/24
+        ${unicast_1}/${subnet}
+        ${unicast_2}/${subnet}
     }
     virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
+        ${LOADBALANCE_VIP}/${subnet}
     }
     track_script {
         check_apiserver
