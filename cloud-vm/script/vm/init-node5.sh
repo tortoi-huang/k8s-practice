@@ -4,7 +4,7 @@
 set -e
 
 sudo tee -a /etc/profile <<-EOF
-export NODE_IP=192.168.98.205
+export NODE_IP=${CONTROL_NODE5}
 export NODE_NAME=k8s5
 EOF
 source /etc/profile
