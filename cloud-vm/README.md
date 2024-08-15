@@ -1,65 +1,13 @@
 # 创建kubernetes集群
 
 ## 规划
-创建一个虚拟交换机
+搭建五个节点的 kubernetes 集群。
 
-子网为 192.168.98.0/24, 网关为 192.168.98.1
 
-创建5个虚拟机
-+ ip: 192.168.98.201, hostname: k8s1 (master etcd)
-+ ip: 192.168.98.202, hostname: k8s2 (master etcd)
-+ ip: 192.168.98.203, hostname: k8s3 (master etcd)
-+ ip: 192.168.98.204, hostname: k8s4 (node)
-+ ip: 192.168.98.205, hostname: k8s5 (node)
-+ ip: 192.168.98.101, 控制面板集群负载均衡 vip
-
-虚拟机可以通过 nat 访问网络，并搭建五个节点的 kubernetes 集群。
-
-## 宿主机配置
-### 配置宿主机 ssh 访问虚拟机
-复制 [config](./conf/config) 文件到宿主机用户目录 ~/.ssh/ 下
-
-```powershell
-# 看是否已经有默认的ssh 密钥，如果没有则使用生成
-# ssh-keygen
-# 设置脚本执行策略
-# Get-ExecutionPolicy
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
-```
-## 创建交换机
-```bash
-.\script\host\1k8s-init.ps1
-```
-
-## 创建虚拟机
-```powershell
-.\script\host\2k8s1.ps1
-# 启动虚拟机
-Start-VM k8s1
-```
 ## 安装和配置虚拟机
-安装时注意选择手动设置ip地址，避免安装好后无法获取ip和无法连接网络
-subnet: 192.168.98.0/24
-adress: 192.168.98.200
-gateway: 192.168.98.1
-name server: 223.5.5.5,1.1.1.1
-
-安装用户名: huang
-
-ubuntu软件源: http://mirrors.aliyun.com/ubuntu
 
 ### 配置ubuntu
 ```bash
-# ssh huang@192.168.98.200
-
-# 启用 root 账号, kubernetes 需要 root 账号运行
-sudo passwd root
-sudo passwd -u root 
-sudo sed 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config -i
-sudo systemctl restart ssh
-logout
-
-ssh root@192.168.98.200
 apt update
 apt upgrade -y
 
