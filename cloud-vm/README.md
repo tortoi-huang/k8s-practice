@@ -8,8 +8,7 @@
 
 ### 配置ubuntu
 ```bash
-apt update
-apt upgrade -y
+apt update && apt upgrade -y
 
 # 安装和更新 ubuntu 非常耗时, 建议此时备份虚拟磁盘模板
 
@@ -22,6 +21,10 @@ source /etc/profile
 
 # 检查系统 对 cgroup v2 的支持, 输出 ： cgroup2fs
 # stat -fc %T /sys/fs/cgroup/
+```
+### 分别配置每个节点
+```bash
+k8s-practice/hyperv-cluster/script/vm/init-nodeX.sh
 ```
 
 ## 安装软件负载均衡
