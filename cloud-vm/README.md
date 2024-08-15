@@ -29,12 +29,7 @@ source /etc/profile
 ```
 
 ## 安装软件负载均衡
-创建高可用集群需要有多个节点，需要一个域名或者虚拟ip总是可以访问到其中一个存活的节点, 所以需要配置软件负载均衡, 不使用域名解析的原因是大多数操作系统和客户端会缓存域名解析的结果, 服务宕机时常常不能及时切换.
-
-这里使用 keepalived + HAProxy 方案:
-```bash
-k8s-practice/cloud-vm/script/vm/1package-ha.sh
-```
+云服务通常不支持 keepalived 需要使用云负载均衡产品， 或者高可用虚拟ip产品
 
 ## 安装 kubernetes 及其依赖
 安装 go, runc, cni, containerd
@@ -89,31 +84,6 @@ crictl info|grep systemd
 ## 配置控制节点(master)的高可用和负载均衡
 在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问kube server api时总是访问主节点。
 
-### 配置 keepalived
-参考: [text](https://github.com/kubernetes/kubeadm/blob/main/docs/ha-considerations.md#options-for-software-load-balancing)
-
-keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如果有更高优先级的服务器出现, keepalived 会立刻将 vip设置到更高优先级的服务器。 
-
-其中以下变量每台服务器不一样:
-+ VI_1.state: 服务器角色: MASTER 或者 BACKUP
-+ VI_1.priority 优先级: 总是该数值最大的获得 vip地址
-+ VI_1.unicast_src_ip 当前节点的 ip地址
-+ VI_1.unicast_peer 其他节点的ip地址
-
-其他配置解析:
-* unicast_peer: 如果不配置则通过VRRP 组播发现其他节点, 如果配置了则使用该列表的ip组建集群
-* unicast_src_ip: 表示可以绑定 vip的接口的ip地址, 比如 ip 192.168.98.201 绑定到 eth0 接口，backup状态下 eth0 只有一个ip就是 unicast_src_ip, master状态下 eth0 有两个 ip: unicast_src_ip 和 LOADBALANCE_VIP
-
-在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
-```bash
-# 配置 keepalived
-k8s-practice/cloud-vm/script/vm/keepalived.sh
-
-# 查看 eth0 上的虚拟ip地址是否配置成功
-ip addr
-# 使用nc 确认 keepalived 健康检查发起了调用
-nc -l ${APISERVER_SRC_PORT}
-```
 
 ### 配置 HAProxy
 分别在 k8s1, k8s2, k8s3 三个服务器上配置.  

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sudo apt install haproxy -y
+
 # 遇到错误时停止执行后续语句
 set -e
 
