@@ -16,8 +16,9 @@ apt upgrade -y
 cd ~
 git clone https://github.com/tortoi-huang/k8s-practice.git
 
-chmod +x k8s-practice/hyperv-cluster/script/vm/*.sh
-k8s-practice/hyperv-cluster/script/vm/0common-conf.sh
+chmod +x k8s-practice/cloud-vm/script/vm/*.sh
+k8s-practice/cloud-vm/script/vm/0common-conf.sh
+source /etc/profile
 
 # 检查系统 对 cgroup v2 的支持, 输出 ： cgroup2fs
 # stat -fc %T /sys/fs/cgroup/
@@ -28,13 +29,21 @@ k8s-practice/hyperv-cluster/script/vm/0common-conf.sh
 
 这里使用 keepalived + HAProxy 方案:
 ```bash
-k8s-practice/hyperv-cluster/script/vm/1package-ha.sh
+k8s-practice/cloud-vm/script/vm/1package-ha.sh
 ```
 
 ## 安装 kubernetes 及其依赖
 安装 go, runc, cni, containerd
 ```bash
-k8s-practice/hyperv-cluster/script/vm/2package-run.sh
+k8s-practice/cloud-vm/script/vm/2package-run.sh
+
+# 检查安装结果
+ll /usr/local/sbin/runc
+ll /opt/cni/bin
+# 应该有containerd
+ll /usr/local/bin/
+systemctl status containerd
+# journalctl -fu containerd
 ```
 
 ### 配置 containerd 
@@ -42,10 +51,10 @@ k8s-practice/hyperv-cluster/script/vm/2package-run.sh
 生成默认的配置文件，避免的手工编写麻烦
 ```bash
 
-# k8s-practice/hyperv-cluster/script/vm/3config-run-apt.sh
-k8s-practice/hyperv-cluster/script/vm/3config-run.sh
+# k8s-practice/cloud-vm/script/vm/3config-run-apt.sh
+k8s-practice/cloud-vm/script/vm/3config-run.sh
 
-# systemctl restart containerd
+systemctl restart containerd
 # 查看生效的配置
 # containerd config dump
 
@@ -62,7 +71,7 @@ ctr c del ngx
 
 ### 安装 kubelet 及相关工具
 ```bash
-k8s-practice/hyperv-cluster/script/vm/4package-k8s.sh
+k8s-practice/cloud-vm/script/vm/4package-k8s.sh
 
 # 查看 kubelet 运行状态, 此处状态应该在不断重启中, 需要执行init或者join后才会正常运行， 也可以增加一个优先的kubelet配置让它单独运行起来, 详见使用 kubeadmin 创建 etcd 集群
 sudo systemctl status kubelet
@@ -71,59 +80,6 @@ sudo systemctl status kubelet
 
 # 看起来 cgroup 管理程序没有使用 systemd ？
 crictl info|grep systemd
-```
-
-## 复制虚拟机
-
-```bash
-# 因为要复制磁盘, 使用命令stop-vm 或者在hyper-v控制台上优雅关机, 确保模板机的快照合并到虚拟磁盘, 在虚拟机内部使用linux命令关机是不会合并快照的.
-.\script\host\3k8s-clone.ps1
-```
-
-### 配置各个虚拟机的ip地址
-因为克隆了模板机的 ip 配置会有 ip 冲突，需要逐个虚拟机启动进行配置, 其中包含修改ip的命令执行很慢
-```powershell
-# 配置k8s1 ip
-Start-VM k8s1
-ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node1.sh"
-
-# k8s1 为安装工作主机, 依赖其他主机启动，最后配置
-# 配置k8s2 ip
-Start-VM k8s2
-ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node2.sh"
-# 检查主机唯一标识
-ip link
-cat /sys/class/dmi/id/product_uuid
-
-# 配置k8s3 ip
-Start-VM k8s3
-ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node3.sh"
-
-# 配置k8s4 ip
-Start-VM k8s4
-ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node4.sh"
-
-# 配置k8s5 ip
-Start-VM k8s5
-ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node5.sh"
-
-# 生成ssh key 用来使用scp 复制文件到其他节点, 非安装 kubernetes 必须
-# ssh-keygen
-# ssh-copy-id root@k8s2
-# ssh-copy-id root@k8s3
-# ssh-copy-id root@k8s4
-# ssh-copy-id root@k8s5
-remove-item $HOME\.ssh\known_hosts
-```
-宿主机配置免密登录, powershell没有ssh-copy-id 使用gitbash
-```bash
-# # ssh-keygen
-# ssh-copy-id k8s1
-# ssh-copy-id k8s2
-# ssh-copy-id k8s3
-# ssh-copy-id k8s4
-# ssh-copy-id k8s5
-
 ```
 
 ## 配置控制节点(master)的高可用和负载均衡
@@ -147,7 +103,7 @@ keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如�
 在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
 ```bash
 # 配置 keepalived
-k8s-practice/hyperv-cluster/script/vm/keepalived.sh
+k8s-practice/cloud-vm/script/vm/keepalived.sh
 
 # 查看 eth0 上的虚拟ip地址是否配置成功
 ip addr
@@ -163,7 +119,7 @@ nc -l ${APISERVER_SRC_PORT}
 + server ${node-id} ${addr}:${APISERVER_SRC_PORT} 转发后端地址, 可以配置多个
 
 ```bash
-k8s-practice/hyperv-cluster/script/vm/haproxy.sh
+k8s-practice/cloud-vm/script/vm/haproxy.sh
 # 查看日志
 journalctl -fu haproxy
 # 检查端口正常监听 
@@ -273,7 +229,7 @@ kubeadm init phase etcd local --config=$HOME/kubeadmcfg.yaml
 ```bash
 
 # 自动上传证书方式初始化
-k8s-practice/hyperv-cluster/script/vm/init-k8s-upload.sh
+k8s-practice/cloud-vm/script/vm/init-k8s-upload.sh
 
 # 如果不考虑上传证书则需要按如下方式在每个节点手工复制证书非常麻烦
 # 手工复制证书脚本, 需要执行 init 后才会生成证书
@@ -281,7 +237,7 @@ k8s-practice/hyperv-cluster/script/vm/init-k8s-upload.sh
 # ssh-copy-id root@k8s2
 # ssh-copy-id root@k8s3
 
-# k8s-practice/hyperv-cluster/script/vm/init-k8s-manul.sh
+# k8s-practice/cloud-vm/script/vm/init-k8s-manul.sh
 
 ```
 

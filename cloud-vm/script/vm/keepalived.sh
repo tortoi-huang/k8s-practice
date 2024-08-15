@@ -4,7 +4,7 @@
 set -e
 
 if [ ! -n "$LOADBALANCE_VIP" ]; then 
-    echo "'$script_dir/env.profile' not load"
+    echo "environment variables are not set "
     exit 1
 fi
 
