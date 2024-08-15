@@ -8,6 +8,8 @@ if [ ! -n "$LOADBALANCE_VIP" ]; then
     exit 1
 fi
 
+sudo apt install keepalived -y
+
 # 健康检查服务
 sudo tee /etc/keepalived/check_apiserver.sh <<-EOF
 #!/bin/sh

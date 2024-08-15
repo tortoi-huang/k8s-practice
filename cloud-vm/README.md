@@ -1,10 +1,12 @@
 # 创建kubernetes集群
 
 ## 规划
-搭建五个节点的 kubernetes 集群。
+使用阿里云搭建五个ECS节点的 kubernetes 集群。使用阿里云的高可用虚拟ip替代keepalive 做高可用
 
 
 ## 安装和配置虚拟机
+分别创建高可用虚拟ip和5个ECS，分别记录ip
+修改 https://github.com/tortoi-huang/k8s-practice.git 中 env.profile 
 
 ### 配置ubuntu
 ```bash
@@ -29,7 +31,7 @@ source /etc/profile
 ```
 
 ## 安装软件负载均衡
-云服务通常不支持 keepalived 需要使用云负载均衡产品， 或者高可用虚拟ip产品
+云服务通常支持 keepalived 需要先在vpc界面高可用虚拟ip 或者使用负载均衡产品
 
 ## 安装 kubernetes 及其依赖
 安装 go, runc, cni, containerd
@@ -84,6 +86,31 @@ crictl info|grep systemd
 ## 配置控制节点(master)的高可用和负载均衡
 在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问kube server api时总是访问主节点。
 
+### 配置 keepalived
+参考: [text](https://github.com/kubernetes/kubeadm/blob/main/docs/ha-considerations.md#options-for-software-load-balancing)
+
+keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如果有更高优先级的服务器出现, keepalived 会立刻将 vip设置到更高优先级的服务器。 
+
+其中以下变量每台服务器不一样:
++ VI_1.state: 服务器角色: MASTER 或者 BACKUP
++ VI_1.priority 优先级: 总是该数值最大的获得 vip地址
++ VI_1.unicast_src_ip 当前节点的 ip地址
++ VI_1.unicast_peer 其他节点的ip地址
+
+其他配置解析:
+* unicast_peer: 如果不配置则通过VRRP 组播发现其他节点, 如果配置了则使用该列表的ip组建集群
+* unicast_src_ip: 表示可以绑定 vip的接口的ip地址, 比如 ip 192.168.98.201 绑定到 eth0 接口，backup状态下 eth0 只有一个ip就是 unicast_src_ip, master状态下 eth0 有两个 ip: unicast_src_ip 和 LOADBALANCE_VIP
+
+在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
+```bash
+# 配置 keepalived
+k8s-practice/cloud-vm/script/vm/keepalived.sh
+
+# 查看 eth0 上的虚拟ip地址是否配置成功
+ip addr
+# 使用nc 确认 keepalived 健康检查发起了调用
+nc -l ${APISERVER_SRC_PORT}
+```
 
 ### 配置 HAProxy
 分别在 k8s1, k8s2, k8s3 三个服务器上配置.  
