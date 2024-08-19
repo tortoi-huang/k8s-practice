@@ -37,3 +37,5 @@ New-Item -Path "$cluster_path\$d\" -Name $disk_dir -ItemType "directory"
 # 复制磁盘
 Copy-Item "$cluster_path\$t\$disk_dir\$t.vhdx" -Destination "$cluster_path\$d\$disk_dir\$d.vhdx"
 Add-VMHardDiskDrive -VMName $d -Path "$cluster_path\$d\$disk_dir\$d.vhdx"
+# 启用嵌套虚拟化
+Set-VMProcessor -ExposeVirtualizationExtensions $true -VMName $d
