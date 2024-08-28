@@ -5,8 +5,13 @@
 
 
 ## 安装和配置虚拟机
-分别创建高可用虚拟ip和5个ECS，分别记录ip
-修改 https://github.com/tortoi-huang/k8s-practice.git 中 env.profile 
+
+在阿里云配额中心申请 havip, 申请成功后可以在“专有网络”控制台的“高可用虚拟IP”菜单找到   
+
+分别创建高可用虚拟ip和5个ECS，分别记录ip, 注意 havip 和 ecs 需要使用相同的交换机   
+修改 https://github.com/tortoi-huang/k8s-practice.git 中 env.profile    
+
+配置高可用“高可用虚拟IP”到虚拟机，进入“高可用虚拟IP”管理界面点击ip地址分配ecs   
 
 ### 配置ubuntu
 ```bash
@@ -31,7 +36,13 @@ source /etc/profile
 ```
 
 ## 安装软件负载均衡
-云服务通常支持 keepalived 需要先在vpc界面高可用虚拟ip 或者使用负载均衡产品
+云服务通常支持 keepalived 需要先在vpc界面高可用虚拟ip 或者使用负载均衡产品   
+创建高可用集群需要有多个节点，需要一个域名或者虚拟ip总是可以访问到其中一个存活的节点, 所以需要配置软件负载均衡, 不使用域名解析的原因是大多数操作系统和客户端会缓存域名解析的结果, 服务宕机时常常不能及时切换.
+
+这里使用 keepalived + HAProxy 方案:
+```bash
+k8s-practice/cloud-vm/script/vm/1package-ha.sh
+```
 
 ## 安装 kubernetes 及其依赖
 安装 go, runc, cni, containerd
