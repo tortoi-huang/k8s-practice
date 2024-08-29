@@ -16,7 +16,7 @@ $global:nat_prefix_len = 24
 $global:nat_subnet = "192.168.98.0/$nat_prefix_len"
 $global:nat_gateway = "192.168.98.1"
 
-$global:vm_master_mem = 2GB
+$global:vm_master_mem = 4GB
 $global:vm_master_cpus = 2
 $global:vm_node_mem = 3GB
 $global:vm_node_cups = 4

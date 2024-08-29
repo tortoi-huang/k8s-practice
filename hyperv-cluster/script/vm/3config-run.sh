@@ -8,22 +8,24 @@ sudo mkdir -p /etc/containerd/certs.d/_default /etc/containerd/certs.d/docker.io
 
 # journalctl -fu containerd
 # containerd 配置文件
-sudo tee /etc/containerd/config.toml <<-"EOF"
-version = 2
-# [cgroup]
-#   driver = "systemd"
-[plugins]
-  [plugins."io.containerd.grpc.v1.cri"]
-    # systemd_cgroup = true
-    [plugins."io.containerd.grpc.v1.cri".containerd]
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-            SystemdCgroup = true
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+sudo sed "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml -i
+# sudo tee /etc/containerd/config.toml <<-"EOF"
+# version = 2
+# # [cgroup]
+# #   driver = "systemd"
+# [plugins]
+#   [plugins."io.containerd.grpc.v1.cri"]
+#     # systemd_cgroup = true
+#     [plugins."io.containerd.grpc.v1.cri".containerd]
+#       [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+#         [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+#           [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+#             SystemdCgroup = true
 
-    [plugins."io.containerd.grpc.v1.cri".registry]
-      config_path = "/etc/containerd/certs.d"
-EOF
+#     [plugins."io.containerd.grpc.v1.cri".registry]
+#       config_path = "/etc/containerd/certs.d"
+# EOF
 
 # 默认仓库配置
 if [ "$MIRROR_DOCKER" ]; then
