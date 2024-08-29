@@ -184,6 +184,20 @@ kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
         --control-plane
 ```
 
+### 部署测试应用
+```bash
+kubectl apply -f k8s-practice/practice/service/deploy.yaml
+kubectl get po
+# 进入其中一个pod 使用 curl 访问
+kubectl exec -it tc1-5cffdf7c8b-6bxgc -- curl test-nginx:9030
+
+# 测试 dns 解析
+kubectl apply -f https://k8s.io/examples/admin/dns/dnsutils.yaml
+
+# 没问题则输出解析结果
+kubectl exec -i -t dnsutils -- nslookup kubernetes.default
+```
+
 ### 重置集群
 重置到 init 或 join 之前的状态
 ```bash
