@@ -137,11 +137,13 @@ crictl info|grep systemd
 ```powershell
 # 配置k8s1 ip
 Start-VM k8s1
+# ssh -o ConnectTimeout=3 root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node1.sh"
 ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node1.sh"
 
 # k8s1 为安装工作主机, 依赖其他主机启动，最后配置
 # 配置k8s2 ip
 Start-VM k8s2
+# ssh -o ConnectTimeout=3 root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node2.sh"
 ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node2.sh"
 # 检查主机唯一标识
 ip link
@@ -149,14 +151,17 @@ cat /sys/class/dmi/id/product_uuid
 
 # 配置k8s3 ip
 Start-VM k8s3
+# ssh -o ConnectTimeout=3 root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node3.sh"
 ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node3.sh"
 
 # 配置k8s4 ip
 Start-VM k8s4
+# ssh -o ConnectTimeout=3 root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node4.sh"
 ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node4.sh"
 
 # 配置k8s5 ip
 Start-VM k8s5
+# ssh -o ConnectTimeout=3 root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node5.sh"
 ssh root@192.168.98.200 "~/k8s-practice/hyperv-cluster/script/vm/init-node5.sh"
 
 # 生成ssh key 用来使用scp 复制文件到其他节点, 非安装 kubernetes 必须
