@@ -127,7 +127,7 @@ crictl info|grep systemd
 
 ## 复制虚拟机
 
-```bash
+```powershell
 # 因为要复制磁盘, 使用命令stop-vm 或者在hyper-v控制台上优雅关机, 确保模板机的快照合并到虚拟磁盘, 在虚拟机内部使用linux命令关机是不会合并快照的.
 .\script\host\3k8s-clone.ps1
 ```

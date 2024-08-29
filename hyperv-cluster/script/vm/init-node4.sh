@@ -9,6 +9,11 @@ export NODE_NAME=k8s4
 EOF
 source /etc/profile
 
+if [ ! -n "$NODE_IP" ]; then 
+    echo "'NODE_IP' not set"
+    exit 1
+fi
+
 echo ${NODE_NAME} | sudo tee /etc/hostname
 sudo hostname -F /etc/hostname
 
