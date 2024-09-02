@@ -17,7 +17,12 @@ fi
 
 # 安装go, 下载并设置环境变量
 wget -qO- https://dl.google.com/go/go1.22.5.linux-amd64.tar.gz | sudo tar -C /usr/local -xvz
-echo -e "\nexport GOPATH=\$HOME/go\nexport GOROOT=/usr/local/go" | sudo tee -a /etc/profile
+# echo -e "\nexport GOPATH=\$HOME/go\nexport GOROOT=/usr/local/go" | sudo tee -a /etc/profile
+sudo tee -a /etc/profile <<"EOF"
+export GOPATH=$HOME/go
+export GOROOT=/usr/local/go
+export GOPROXY=https://mirrors.aliyun.com/goproxy/
+EOF
 # 生成软连接到 /usr/local/bin, 因为 sudo 无法读取path变量, 不能通过设置path变量方式处理
 sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
 source /etc/profile
@@ -34,6 +39,10 @@ sudo make install
 cd ..
 rm -rf runc
 
+# 安装 cni 工具
+# wget -qO- https://mirror.ghproxy.com/https://github.com/containernetworking/cni/archive/refs/tags/v1.2.3.tar.gz| sudo tar zx -C /opt/cni/bin/ cni-1.2.3/cnitool/cnitool --strip-components=2 
+wget -qO- https://github.com/containernetworking/cni/archive/refs/tags/v1.2.3.tar.gz| sudo tar zx -C /opt/cni/bin/ cni-1.2.3/cnitool/cnitool --strip-components=2 
+ln -s /opt/cni/bin/cnitool /usr/local/bin/cnitool
 # 安装 cni 网络插件
 sudo mkdir -p /opt/cni/bin
 wget -qO- https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz | sudo tar -C /opt/cni/bin -xvz 

@@ -176,6 +176,11 @@ kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
 
 ```
 
+### 安装 pod 容器网络
+kubeadm不会安装容器网络, cni的容器插件也仅限于单机内部网络， 在安装 pod 容器网络之前 dns 不会启动, 可以通过部署一个service测试, 可以通过 service ip 访问服务，但是不能通过 service name 访问服务
+```bash
+```
+
 ### 初始化数据节点 (k8s4, k8s5)
 ```bash
 mkdir -p /etc/kubernetes/pki
