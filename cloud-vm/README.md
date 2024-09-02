@@ -177,8 +177,11 @@ kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
 ```
 
 ### 安装 pod 容器网络
-kubeadm不会安装容器网络, cni的容器插件也仅限于单机内部网络， 在安装 pod 容器网络之前 dns 不会启动, 可以通过部署一个service测试, 可以通过 service ip 访问服务，但是不能通过 service name 访问服务
+kubeadm不会安装容器网络, cni的容器插件也仅限于单机内部网络， 在安装 pod 容器网络之前 dns 不会启动, 可以通过部署一个service测试, 可以通过 service ip 访问服务，但是不能通过 service name 访问服务   
+这里安装 calico 网络
 ```bash
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/tigera-operator.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/custom-resources.yaml
 ```
 
 ### 初始化数据节点 (k8s4, k8s5)
