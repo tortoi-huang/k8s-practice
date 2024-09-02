@@ -66,7 +66,7 @@ spec:
   serviceName: doriscluster-helm-fe-internal
   # FIXME 首次启动需要串行启动，因为第一个启动完成的要作为master节点, 而后续启动的节点才能指定master的地址
   # 非首次启动需要并行启动， 因为如果第一个节点挂掉并且数据丢失，那么它启动会作为一个新节点，但是又处于第一启动顺位，无法加入集群，从而作为单独集群启动，后续原集群节点启动也无法将它加入原集群，导致整个集群无法启动
-  podManagementPolicy: "Parallel"
+  #  podManagementPolicy: "Parallel"
   template:
     metadata:
       labels:
