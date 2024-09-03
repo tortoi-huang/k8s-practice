@@ -40,11 +40,11 @@ cd ..
 rm -rf runc
 
 # 安装 cni 工具
+sudo mkdir -p /opt/cni/bin
 # wget -qO- https://mirror.ghproxy.com/https://github.com/containernetworking/cni/archive/refs/tags/v1.2.3.tar.gz| sudo tar zx -C /opt/cni/bin/ cni-1.2.3/cnitool/cnitool --strip-components=2 
 wget -qO- https://github.com/containernetworking/cni/archive/refs/tags/v1.2.3.tar.gz| sudo tar zx -C /opt/cni/bin/ cni-1.2.3/cnitool/cnitool --strip-components=2 
 ln -s /opt/cni/bin/cnitool /usr/local/bin/cnitool
 # 安装 cni 网络插件
-sudo mkdir -p /opt/cni/bin
 wget -qO- https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz | sudo tar -C /opt/cni/bin -xvz 
 echo -e "export CNI_PATH=/opt/cni/bin" | sudo tee -a /etc/profile
 source /etc/profile
