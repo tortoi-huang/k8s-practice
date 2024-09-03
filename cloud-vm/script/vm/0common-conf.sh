@@ -67,3 +67,14 @@ ${DATA_NODE2} k8s5
 ${LOADBALANCE_VIP} cluster-endpoint
 EOF
 
+# ubuntu 的服务自动重启
+if command -v needrestart&> /dev/null; then
+    sed "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf -i
+fi
+
+# 配置 dns 服务
+if [ -f "/etc/systemd/resolved.conf" ];then
+    sed 's/#DNS=/DNS=223.5.5.5 1.1.1.1/' /etc/systemd/resolved.conf -i
+    sudo rm /etc/resolv.conf
+    ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
+fi

@@ -173,15 +173,21 @@ kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
         --discovery-token-ca-cert-hash XXXXXX \
         --control-plane
 
-
+# 此时使用 kubectl get node 显示为节点都为 noready 状态， 需要安装容器网络后才能 ready
+# 以下命令显示 dns pod 为 pending, 等待安装 pod 容器网络
+kubectl get po -n kube-system 
 ```
 
 ### 安装 pod 容器网络
 kubeadm不会安装容器网络, cni的容器插件也仅限于单机内部网络， 在安装 pod 容器网络之前 dns 不会启动, 可以通过部署一个service测试, 可以通过 service ip 访问服务，但是不能通过 service name 访问服务   
 这里安装 calico 网络
 ```bash
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/tigera-operator.yaml
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/custom-resources.yaml
+# kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/tigera-operator.yaml
+# kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/custom-resources.yaml
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+# 安装容器网络数分钟后显示 dns pod 已经ready, node 已经 ready
+kubectl get po -n kube-system 
+kubectl get node
 ```
 
 ### 初始化数据节点 (k8s4, k8s5)
@@ -197,7 +203,7 @@ kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
 kubectl apply -f k8s-practice/practice/service/deploy.yaml
 kubectl get po
 # 进入其中一个pod 使用 curl 访问
-kubectl exec -it tc1-5cffdf7c8b-6bxgc -- curl test-nginx:9030
+kubectl exec -it tc1-5cffdf7c8b-72frl -- curl test-nginx:9030
 
 # 测试 dns 解析
 kubectl apply -f https://k8s.io/examples/admin/dns/dnsutils.yaml
@@ -209,7 +215,7 @@ kubectl exec -i -t dnsutils -- nslookup kubernetes.default
 ### 重置集群
 重置到 init 或 join 之前的状态
 ```bash
-kubeadm reset
+kubeadm reset -f
 # 如果存在，则删除
 rm -rf /etc/cni/net.d
 # 如果使用ipvs 则需要清除规则
