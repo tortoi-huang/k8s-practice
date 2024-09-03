@@ -172,10 +172,9 @@ k8s-practice/cloud-vm/script/vm/init-k8s-upload.sh
 kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
         --discovery-token-ca-cert-hash XXXXXX \
         --control-plane
-
-# 此时使用 kubectl get node 显示为节点都为 noready 状态， 需要安装容器网络后才能 ready
-# 以下命令显示 dns pod 为 pending, 等待安装 pod 容器网络
+# 等待 node 和 pod 都处于ready状态, 若没有 ready请看kubelete日志
 kubectl get po -n kube-system 
+kubectl get node
 ```
 
 ### 安装 pod 容器网络
@@ -185,9 +184,7 @@ kubeadm不会安装容器网络, cni的容器插件也仅限于单机内部网�
 # kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/tigera-operator.yaml
 # kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/custom-resources.yaml
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-# 安装容器网络数分钟后显示 dns pod 已经ready, node 已经 ready
-kubectl get po -n kube-system 
-kubectl get node
+
 ```
 
 ### 初始化数据节点 (k8s4, k8s5)
@@ -221,5 +218,11 @@ rm -rf /etc/cni/net.d
 # 如果使用ipvs 则需要清除规则
 ipvsadm --clear
 # 清空用户配置
-rm -f $HOME/.kube/config/*
+rm -f $HOME/.kube/config
 ```
+
+
+## 问题
++ 第一个master节点启动的时候, kubectl get node 检查节点应该是ready状态, 如果是 noready, 则应该查看 kubelet 的日志: journalctl -fu kubelet. 实验时忘记配置 /etc/cni/net.d/10-containerd-net.conflist 导致此问题
++ 部署服务时经常出现pod ip冲突，多个pod使用相同的ip 原因未明
++ dns 服务无法启动, 原因未明

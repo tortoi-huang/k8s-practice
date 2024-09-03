@@ -73,8 +73,8 @@ if command -v needrestart&> /dev/null; then
 fi
 
 # 配置 dns 服务
-if [ -f "/etc/systemd/resolved.conf" ];then
-    sed 's/#DNS=/DNS=223.5.5.5 1.1.1.1/' /etc/systemd/resolved.conf -i
-    sudo rm /etc/resolv.conf
-    ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
-fi
+# if [ -f "/etc/systemd/resolved.conf" ];then
+#     sed 's/#DNS=/DNS=223.5.5.5 1.1.1.1/' /etc/systemd/resolved.conf -i
+#     sudo rm /etc/resolv.conf
+#     ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
+# fi
