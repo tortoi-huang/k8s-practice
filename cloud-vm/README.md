@@ -14,6 +14,9 @@
 
 ### 配置ubuntu
 ```bash
+# 防止弹出重启服务提醒
+sed "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf -i
+
 apt update && apt upgrade -y
 
 # 安装和更新 ubuntu 非常耗时, 建议此时备份虚拟磁盘模板
@@ -23,15 +26,9 @@ git clone https://github.com/tortoi-huang/k8s-practice.git
 
 chmod +x k8s-practice/cloud-vm/script/vm/*.sh
 k8s-practice/cloud-vm/script/vm/0common-conf.sh
-source /etc/profile
 
 # 检查系统 对 cgroup v2 的支持, 输出 ： cgroup2fs
 # stat -fc %T /sys/fs/cgroup/
-```
-### 分别配置每个节点
-```bash
-k8s-practice/cloud-vm/script/vm/init-nodeX.sh
-source /etc/profile
 ```
 
 ## 配置控制节点(master)的高可用和负载均衡
@@ -42,9 +39,7 @@ source /etc/profile
 创建高可用集群需要有多个节点，需要一个域名或者虚拟ip总是可以访问到其中一个存活的节点, 所以需要配置软件负载均衡, 不使用域名解析的原因是大多数操作系统和客户端会缓存域名解析的结果, 服务宕机时常常不能及时切换.
 
 这里使用 keepalived + HAProxy 方案:
-```bash
-k8s-practice/cloud-vm/script/vm/1package-ha.sh
-```
+
 在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问kube server api时总是访问主节点。
 
 ### 配置 keepalived
@@ -91,6 +86,7 @@ lsof -i:16443
 安装 go, runc, cni, containerd
 ```bash
 k8s-practice/cloud-vm/script/vm/2package-run.sh
+source /etc/profile
 
 # 检查安装结果
 ll /usr/local/sbin/runc

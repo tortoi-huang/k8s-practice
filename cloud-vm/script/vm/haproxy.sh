@@ -1,14 +1,17 @@
 #!/bin/bash
 
-sudo apt install haproxy -y
 
 # 遇到错误时停止执行后续语句
 set -e
 
+script_dir="$(dirname "$0")"
+source $script_dir/env.profile
 if [ ! -n "$APISERVER_DEST_PORT" ]; then 
     echo "variable: APISERVER_DEST_PORT not load"
     exit 1
 fi
+
+sudo apt install haproxy -y
 
 sudo tee /etc/haproxy/haproxy.cfg <<-EOF
 # /etc/haproxy/haproxy.cfg
@@ -62,9 +65,9 @@ backend apiserverbackend
     mode tcp
     balance     roundrobin
     
-    server 1 k8s1:${APISERVER_SRC_PORT} check verify none
-    server 2 k8s2:${APISERVER_SRC_PORT} check verify none
-    server 3 k8s3:${APISERVER_SRC_PORT} check verify none
+    server 1 ${CONTROL_NODE1}:${APISERVER_SRC_PORT} check verify none
+    server 2 ${CONTROL_NODE2}:${APISERVER_SRC_PORT} check verify none
+    server 3 ${CONTROL_NODE3}:${APISERVER_SRC_PORT} check verify none
 EOF
 
 sudo systemctl restart haproxy

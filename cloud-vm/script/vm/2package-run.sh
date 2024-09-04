@@ -2,7 +2,6 @@
 
 # 遇到错误时停止执行后续语句
 set -e
-
 set -x
 
 if [ "$EUID" -ne 0 ]; then

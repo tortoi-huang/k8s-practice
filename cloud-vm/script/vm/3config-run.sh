@@ -4,54 +4,60 @@
 set -e
 # set -x
 
+# script_dir="$(dirname "$0")"
+# source $script_dir/env.profile
+# if [ ! -n "$POD_NETWORK_CIDR" ]; then 
+#     echo "environment variables are not set: POD_NETWORK_CIDR"
+#     exit 1
+# fi
 # 配置 containerd cni插件
 mkdir -p /etc/cni/net.d
-tee /etc/cni/net.d/10-containerd-net.conflist <<-"EOF"
-{
-  "cniVersion": "1.0.0",
-  "name": "containerd-net",
-  "plugins": [
-    {
-      "type": "bridge",
-      "bridge": "cni0",
-      "isGateway": true,
-      "ipMasq": true,
-      "promiscMode": true,
-      "ipam": {
-        "type": "host-local",
-        "ranges": [
-          [
-            {
-              "subnet": "10.88.0.0/16"
-            }
-          ],
-          [
-            {
-              "subnet": "2001:db8:4860::/64"
-            }
-          ]
-        ],
-        "routes": [
-          {
-            "dst": "0.0.0.0/0"
-          },
-          {
-            "dst": "::/0"
-          }
-        ]
-      }
-    },
-    {
-      "type": "portmap",
-      "capabilities": {
-        "portMappings": true
-      },
-      "externalSetMarkChain": "KUBE-MARK-MASQ"
-    }
-  ]
-}
-EOF
-systemctl restart containerd
+# tee /etc/cni/net.d/10-containerd-net.conflist <<-EOF
+# {
+#   "cniVersion": "1.0.0",
+#   "name": "containerd-net",
+#   "plugins": [
+#     {
+#       "type": "bridge",
+#       "bridge": "cni0",
+#       "isGateway": true,
+#       "ipMasq": true,
+#       "promiscMode": true,
+#       "ipam": {
+#         "type": "host-local",
+#         "ranges": [
+#           [
+#             {
+#               "subnet": "${POD_NETWORK_CIDR}"
+#             }
+#           ],
+#           [
+#             {
+#               "subnet": "${POD_NETWORK_CIDRV6}"
+#             }
+#           ]
+#         ],
+#         "routes": [
+#           {
+#             "dst": "0.0.0.0/0"
+#           },
+#           {
+#             "dst": "::/0"
+#           }
+#         ]
+#       }
+#     },
+#     {
+#       "type": "portmap",
+#       "capabilities": {
+#         "portMappings": true
+#       },
+#       "externalSetMarkChain": "KUBE-MARK-MASQ"
+#     }
+#   ]
+# }
+# EOF
+# systemctl restart containerd
 
 sudo mkdir -p /etc/containerd
 
