@@ -1,5 +1,6 @@
 #!/bin/bash
-
+set -e
+set -x
 script_dir="$(dirname "$0")"
 source $script_dir/env.profile
 if [ ! -n "$LOADBALANCE_VIP" ]; then 
