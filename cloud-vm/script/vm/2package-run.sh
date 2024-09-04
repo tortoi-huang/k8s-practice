@@ -47,6 +47,11 @@ ln -s /opt/cni/bin/cnitool /usr/local/bin/cnitool
 wget -qO- https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz | sudo tar -C /opt/cni/bin -xvz 
 echo -e "export CNI_PATH=/opt/cni/bin" | sudo tee -a /etc/profile
 source /etc/profile
+# 安装calico
+# curl -L -o /opt/cni/bin/calico https://github.com/projectcalico/cni-plugin/releases/download/v3.14.0/calico-amd64
+# chmod 755 /opt/cni/bin/calico
+# curl -L -o /opt/cni/bin/calico-ipam https://github.com/projectcalico/cni-plugin/releases/download/v3.14.0/calico-ipam-amd64
+# chmod 755 /opt/cni/bin/calico-ipam
 
 # 安装 containerd 容器运行时, https://github.com/containerd/containerd/blob/main/docs/getting-started.md
 wget -qO- https://github.com/containerd/containerd/releases/download/v1.7.20/containerd-1.7.20-linux-amd64.tar.gz | sudo tar Cxzv /usr/local 

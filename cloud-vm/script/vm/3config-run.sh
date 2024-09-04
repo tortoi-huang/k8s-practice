@@ -12,6 +12,8 @@ set -e
 # fi
 # 配置 containerd cni插件
 mkdir -p /etc/cni/net.d
+
+# kubernetes 网络插件会自动生成 cni 配置, 不需要在这里独立配置, 并且这里配置会影响 kubernetes 配置, 只有在没有 kubernetes 单独使用 containerd 时才需要配置此项
 # tee /etc/cni/net.d/10-containerd-net.conflist <<-EOF
 # {
 #   "cniVersion": "1.0.0",

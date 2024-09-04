@@ -1,18 +1,18 @@
-# 创建kubernetes集群
+# 创建 kubernetes 集群
 本测试在阿里云(海外)ecs + ubuntu22 测试通过
 ## 规划
-使用阿里云搭建五个ECS节点的 kubernetes 集群。使用阿里云的高可用虚拟ip替代keepalive 做高可用
+使用阿里云搭建五个ECS节点的 kubernetes 集群。使用阿里云的高可用虚拟 ip + keepalive 做高可用
 
 ## 安装和配置虚拟机
 
 在阿里云配额中心申请 havip, 申请成功后可以在“专有网络”控制台的“高可用虚拟IP”菜单找到   
 
-分别创建高可用虚拟ip和5个ECS，分别记录ip, 注意 havip 和 ecs 需要使用相同的交换机   
+分别创建高可用虚拟 ip 和5个 ECS，分别记录 ip, 注意 havip 和 ecs 需要使用相同的交换机   
 修改 https://github.com/tortoi-huang/k8s-practice.git 中 env.profile    
 
 配置高可用“高可用虚拟IP”到虚拟机，进入“高可用虚拟IP”管理界面点击ip地址分配ecs   
 
-### 配置ubuntu
+### 配置 ubuntu
 ```bash
 # 防止弹出重启服务提醒
 sed "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf -i
@@ -32,30 +32,30 @@ k8s-practice/cloud-vm/script/vm/0common-conf.sh
 ```
 
 ## 配置控制节点(master)的高可用和负载均衡
-分别在 k8s1, k8s2, k8s3 三个服务器上配置.   
+分别在控制平面服务器上配置.   
 
 ### 安装软件负载均衡
-云服务通常支持 keepalived 需要先在vpc界面高可用虚拟ip 或者使用负载均衡产品   
+云服务通常支持 keepalived 需要先在 vpc 界面高可用虚拟 ip 或者使用负载均衡产品   
 创建高可用集群需要有多个节点，需要一个域名或者虚拟ip总是可以访问到其中一个存活的节点, 所以需要配置软件负载均衡, 不使用域名解析的原因是大多数操作系统和客户端会缓存域名解析的结果, 服务宕机时常常不能及时切换.
 
 这里使用 keepalived + HAProxy 方案:
 
-在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问kube server api时总是访问主节点。
+在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问 kube server api 时总是访问主节点。
 
 ### 配置 keepalived
 参考: [text](https://github.com/kubernetes/kubeadm/blob/main/docs/ha-considerations.md#options-for-software-load-balancing)
 
-keepalived 会为集群中优先级最该的服务器配置一个vip地址, 如果有更高优先级的服务器出现, keepalived 会立刻将 vip设置到更高优先级的服务器。 
+keepalived 会为集群中优先级最该的服务器配置一个 vip 地址, 如果有更高优先级的服务器出现, keepalived 会立刻将 vip 设置到更高优先级的服务器。 
 
 其中以下变量每台服务器不一样:
 + VI_1.state: 服务器角色: MASTER 或者 BACKUP
-+ VI_1.priority 优先级: 总是该数值最大的获得 vip地址
++ VI_1.priority 优先级: 总是该数值最大的获得 vip 地址
 + VI_1.unicast_src_ip 当前节点的 ip地址
 + VI_1.unicast_peer 其他节点的ip地址
 
 其他配置解析:
-* unicast_peer: 如果不配置则通过VRRP 组播发现其他节点, 如果配置了则使用该列表的ip组建集群
-* unicast_src_ip: 表示可以绑定 vip的接口的ip地址, 比如 ip 192.168.98.201 绑定到 eth0 接口，backup状态下 eth0 只有一个ip就是 unicast_src_ip, master状态下 eth0 有两个 ip: unicast_src_ip 和 LOADBALANCE_VIP
+* unicast_peer: 如果不配置则通过 VRRP 组播发现其他节点, 如果配置了则使用该列表的ip组建集群
+* unicast_src_ip: 表示可以绑定 vip 的接口的ip地址, 比如 ip 192.168.98.201 绑定到 eth0 接口，backup 状态下 eth0 只有一个ip就是 unicast_src_ip, master 状态下 eth0 有两个 ip: unicast_src_ip 和 LOADBALANCE_VIP
 
 在所有的 keepalived 节点 (k8s1, k8s2, k8s3) 配置健康检查服务
 ```bash
@@ -83,6 +83,7 @@ lsof -i:16443
 ```
 
 ## 安装 kubernetes 及其依赖
+在所有服务器上配置   
 安装 go, runc, cni, containerd
 ```bash
 k8s-practice/cloud-vm/script/vm/2package-run.sh
@@ -176,12 +177,28 @@ kubectl get node
 ```
 
 ### 安装 pod 容器网络
+安装 helm
+```bash
+curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+sudo apt install apt-transport-https --yes
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt update
+sudo apt install helm
+```
 kubeadm不会安装容器网络, cni的容器插件也仅限于单机内部网络， 在安装 pod 容器网络之前 dns 不会启动, 可以通过部署一个service测试, 可以通过 service ip 访问服务，但是不能通过 service name 访问服务   
 这里安装 calico 网络
 ```bash
+helm repo add projectcalico https://docs.tigera.io/calico/charts
+kubectl create namespace tigera-operator
+helm install calico projectcalico/tigera-operator --version v3.28.1 --namespace tigera-operator
+# 查看安装情况, calico-system 命名空间是 tigera-operator 创建, 如果没有这个命名空间, 或者这个命名空间没有 pod 则安装失败
+kubectl get pods -n calico-system
+# 检查无论以何种形式安装 calico 都会在所有节点的目录 ll /etc/cni/net.d/ 下生成两个文件: 10-calico.conflist, calico-kubeconfig, 如果没有则认为安装失败
+# 这里安装失败会导致 dns 无法使用, 无法跨节点通信, 无法通过 service name 访问 pod, 各个节点的 pod ip 分配冲突
+
 # kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/tigera-operator.yaml
 # kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/custom-resources.yaml
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+# kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
 ```
 
@@ -198,7 +215,7 @@ kubeadm join ${LOADBALANCE_VIP}:${APISERVER_DEST_PORT} --token XXXXXX \
 kubectl apply -f k8s-practice/practice/service/deploy.yaml
 kubectl get po
 # 进入其中一个pod 使用 curl 访问
-kubectl exec -it tc1-5cffdf7c8b-72frl -- curl test-nginx:9030
+kubectl exec -it tc1-5cffdf7c8b-cn8c7 -- curl test-nginx:9030
 
 # 测试 dns 解析
 kubectl apply -f https://k8s.io/examples/admin/dns/dnsutils.yaml
@@ -212,7 +229,7 @@ kubectl exec -i -t dnsutils -- nslookup kubernetes.default
 ```bash
 kubeadm reset -f
 # 如果存在，则删除
-rm -rf /etc/cni/net.d
+rm -rf /etc/cni/net.d/*.conflist
 # 如果使用ipvs 则需要清除规则
 ipvsadm --clear
 # 清空用户配置
@@ -221,6 +238,7 @@ rm -f $HOME/.kube/config
 
 
 ## 问题
-+ 第一个master节点启动的时候, kubectl get node 检查节点应该是ready状态, 如果是 noready, 则应该查看 kubelet 的日志: journalctl -fu kubelet. 实验时忘记配置 /etc/cni/net.d/10-containerd-net.conflist 导致此问题
-+ 部署服务时经常出现pod ip冲突，多个pod使用相同的ip 原因未明
-+ dns 服务无法启动, 原因未明
++ 第一个master节点启动的时候, kubectl get node 检查节点是 noready 状态, 则应该查看 kubelet 的日志: journalctl -fu kubelet, 日志提示 Container runtime network not ready. 手工添加配置 /etc/cni/net.d/10-containerd-net.conflist 所有node 变为ready, dns pod 也变为 ready, 但是 service 名称无法访问, 部署多个pod时发现 pod ip 地址冲突。 原因是集群使用的配置 /etc/cni/net.d/10-containerd-net.conflist 为单节点配置， calico 安装失败 导致每个 node 的 pod 无法相互通信, 只能在各自 node 内部通信, 并且每个node 自行分配 ip 导致冲突
+
+### 未解决问题
++ 无法确定 containerd 是否使用 systemd 作为 cgroup 驱动管理程序
