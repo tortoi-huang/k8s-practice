@@ -142,6 +142,8 @@ crictl info|grep systemd
 
 首先确保 keepalived master 是 k8s1 
 ### 初始化 k8s1
+初始化会生成集群配置文件和证书 /etc/kubernetes/
+会生成初始化 kubelet 配置文件 /var/lib/kubelet/config
 ```bash
 
 # 自动上传证书方式初始化

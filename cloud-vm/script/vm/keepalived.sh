@@ -9,7 +9,7 @@ if [ ! -n "$LOADBALANCE_VIP" ]; then
     echo "environment variables are not set "
     exit 1
 fi
-NODE_IP=$(ip addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1)
+NODE_IP=$(ip addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1| head -n 1)
 
 sudo apt install keepalived -y
 
