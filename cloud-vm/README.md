@@ -230,6 +230,7 @@ kubectl exec -i -t dnsutils -- nslookup kubernetes.default
 kubeadm reset -f
 # 如果存在，则删除
 rm -rf /etc/cni/net.d/*.conflist
+rm -rf /etc/cni/net.d/calico-kubeconfig
 # 如果使用ipvs 则需要清除规则
 ipvsadm --clear
 # 清空用户配置
