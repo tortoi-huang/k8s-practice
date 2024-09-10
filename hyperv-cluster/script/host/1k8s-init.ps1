@@ -8,6 +8,9 @@ New-VMSwitch -SwitchName $vm_switch -SwitchType Internal
 # 查看交换机及其所有属性
 # get-vmswitch $vm_switch|select *
 
+# 宿主机共享交换机, 便于宿主机访问vm
+# Set-VMSwitch -Name $vm_switch -AllowManagementOS $true
+
 # 查看交换机序号(ifIndex)，
 # Get-NetAdapter -Name "vEthernet ($vm_switch)"|select-Object -First 1 { Write-Output $_.ifIndex } 
 # 设置交换机的ip地址，假设上面命令看到的ifIndex是137
