@@ -1,32 +1,33 @@
 # See: https://www.petri.com/using-nat-virtual-switch-hyper-v
 
-If ("NATSwitch" -in (Get-VMSwitch | Select-Object -ExpandProperty Name) -eq $FALSE) {
-    'Creating Internal-only switch named "NATSwitch" on Windows Hyper-V host...'
+& "$PSScriptRoot\0k8s-env.ps1"
+If ("$vm_switch" -in (Get-VMSwitch | Select-Object -ExpandProperty Name) -eq $FALSE) {
+    'Creating Internal-only switch named "$vm_switch" on Windows Hyper-V host...'
 
-    New-VMSwitch -SwitchName "NATSwitch" -SwitchType Internal
+    New-VMSwitch -SwitchName "$vm_switch" -SwitchType Internal
 
-    New-NetIPAddress -IPAddress 192.168.0.1 -PrefixLength 24 -InterfaceAlias "vEthernet (NATSwitch)"
+    New-NetIPAddress -IPAddress $nat_gateway -PrefixLength $nat_prefix_len -InterfaceAlias "vEthernet ($vm_switch)"
 
-    New-NetNAT -Name "NATNetwork" -InternalIPInterfaceAddressPrefix 192.168.0.0/24
+    New-NetNAT -Name "$nat_net" -InternalIPInterfaceAddressPrefix $nat_subnet
 }
 else {
-    '"NATSwitch" for static IP configuration already exists; skipping'
+    '"$vm_switch" for static IP configuration already exists; skipping'
 }
 
-If ("192.168.0.1" -in (Get-NetIPAddress | Select-Object -ExpandProperty IPAddress) -eq $FALSE) {
-    'Registering new IP address 192.168.0.1 on Windows Hyper-V host...'
+If ("$nat_gateway" -in (Get-NetIPAddress | Select-Object -ExpandProperty IPAddress) -eq $FALSE) {
+    'Registering new IP address $nat_gateway on Windows Hyper-V host...'
 
-    New-NetIPAddress -IPAddress 192.168.0.1 -PrefixLength 24 -InterfaceAlias "vEthernet (NATSwitch)"
-}
-else {
-    '"192.168.0.1" for static IP configuration already registered; skipping'
-}
-
-If ("192.168.0.0/24" -in (Get-NetNAT | Select-Object -ExpandProperty InternalIPInterfaceAddressPrefix) -eq $FALSE) {
-    'Registering new NAT adapter for 192.168.0.0/24 on Windows Hyper-V host...'
-
-    New-NetNAT -Name "NATNetwork" -InternalIPInterfaceAddressPrefix 192.168.0.0/24
+    New-NetIPAddress -IPAddress $nat_gateway -PrefixLength $nat_prefix_len -InterfaceAlias "vEthernet ($vm_switch)"
 }
 else {
-    '"192.168.0.0/24" for static IP configuration already registered; skipping'
+    '"$nat_gateway" for static IP configuration already registered; skipping'
+}
+
+If ("$nat_subnet" -in (Get-NetNAT | Select-Object -ExpandProperty InternalIPInterfaceAddressPrefix) -eq $FALSE) {
+    'Registering new NAT adapter for $nat_subnet on Windows Hyper-V host...'
+
+    New-NetNAT -Name "$nat_net" -InternalIPInterfaceAddressPrefix $nat_subnet
+}
+else {
+    '"$nat_subnet" for static IP configuration already registered; skipping'
 }
