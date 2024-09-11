@@ -2,7 +2,7 @@
 
 # 集群vm保存目录
 $global:vm_os_iso = "$HOME\Downloads\ubuntu-24.04-live-server-amd64.iso"
-$global:vm_path = "$HOME\vm"
+$global:vm_path = "D:\vm\Hyper-V"
 $global:cluster_dir = "k8s"
 New-Item -Path "$vm_path\" -Name $cluster_dir -ItemType "directory" -ErrorAction Ignore
 $global:cluster_path = "$vm_path\$cluster_dir"

@@ -44,3 +44,5 @@ mw/doris/doris*.tgz
 mw/doris/doris
 
 hyperv-cluster/temp.ps1
+
+tool/vagrant/.vagrant

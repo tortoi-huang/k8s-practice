@@ -2,38 +2,38 @@ Vagrant.configure("2") do |config|
     config.trigger.before :up do |trigger|
         trigger.info = "Creating 'NATSwitch' Hyper-V switch if it does not exist..."
     
-        trigger.run = {privileged: "true", powershell_elevated_interactive: "true", path: "./scripts/create-nat-hyperv-switch.ps1"}
+        trigger.run = {privileged: "true", powershell_elevated_interactive: "true", path: "./script/create-nat-hyperv-switch.ps1"}
     end
     
     config.trigger.before :reload do |trigger|
         trigger.info = "Setting Hyper-V switch to 'NATSwitch' to allow for static IP..."
     
-        trigger.run = {privileged: "true", powershell_elevated_interactive: "true", path: "./scripts/set-hyperv-switch.ps1"}
+        trigger.run = {privileged: "true", powershell_elevated_interactive: "true", path: "./script/set-hyperv-switch.ps1"}
     end
     
-    # 在vm内执行一个宿主机上的脚本
-    config.vm.provision "shell", path: "./scripts/init-vm.sh"
-    
-    config.vm.provision :reload
+    # exec script in vm, path: the path of host
+    config.vm.provision "shell", path: "./script/init-vm.sh"
 
-    # primary 表示主硬盘
+    # primary: the root file system on
     config.vm.disk :disk, size: "40GB", primary: true
 
     config.vm.provider "hyperv" do |hv|
-        hv.vmname = "k8s1"
+        hv.vmname = "ubt1"
         hv.cpus = 4
-        hv.memory = 3G
+        #MB
+        hv.memory = 4096
         hv.maxmemory = nil
+        hv.vlan_id  = 20
     end
-    config.vm.hostname = "k8s1"
+    config.vm.hostname = "ubt1"
     
-    # 定义多个vm
-    # config.vm.define "k8s1" do |k8s1|
-    #     k8s1.vm.hostname = "k8s1"
-    #     k8s1.vm.provider "hyperv" do |hv2|
-    #         hv2.vmname = "k8s1"
+    # define multi vm
+    # config.vm.define "ubt1" do |ubt1|
+    #     ubt1.vm.hostname = "ubt1"
+    #     ubt1.vm.provider "hyperv" do |hv2|
+    #         hv2.vmname = "ubt1"
     #     end
-    #     k8s1.vm.cloud_init :user_data do |cloud_init2|
+    #     ubt1.vm.cloud_init :user_data do |cloud_init2|
     #         cloud_init2.content_type = "text/cloud-config"
     #         cloud_init2.path = "config1.cfg"
     #     end
@@ -49,7 +49,7 @@ Vagrant.configure("2") do |config|
     # Simplified form
     config.vm.cloud_init :user_data, content_type: "text/cloud-config", path: "config.cfg"
 
-    # block form 另外一种写法
+    # block form 
     # config.vm.cloud_init :user_data do |cloud_init|
     #     cloud_init.content_type = "text/cloud-config"
     #     cloud_init.path = "config.cfg"

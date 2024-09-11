@@ -64,6 +64,8 @@ apt update
 apt upgrade -y
 
 # 安装和更新 ubuntu 非常耗时, 建议此时备份虚拟磁盘模板
+# hyperv-cluster\script\host\0k8s-env.ps1
+# hyperv-cluster\script\host\copy-vm.ps1  -t k8s1 -d k8s_temp -m $vm_master_mem -c $vm_master_cpus
 
 cd ~
 git clone https://github.com/tortoi-huang/k8s-practice.git
@@ -73,14 +75,6 @@ k8s-practice/hyperv-cluster/script/vm/0common-conf.sh
 
 # 检查系统 对 cgroup v2 的支持, 输出 ： cgroup2fs
 # stat -fc %T /sys/fs/cgroup/
-```
-
-## 安装软件负载均衡
-创建高可用集群需要有多个节点，需要一个域名或者虚拟ip总是可以访问到其中一个存活的节点, 所以需要配置软件负载均衡, 不使用域名解析的原因是大多数操作系统和客户端会缓存域名解析的结果, 服务宕机时常常不能及时切换.
-
-这里使用 keepalived + HAProxy 方案:
-```bash
-k8s-practice/hyperv-cluster/script/vm/1package-ha.sh
 ```
 
 ## 安装 kubernetes 及其依赖
@@ -183,7 +177,14 @@ remove-item $HOME\.ssh\known_hosts
 
 ```
 
-## 配置控制节点(master)的高可用和负载均衡
+## 安装软件负载均衡
+创建高可用集群需要有多个节点，需要一个域名或者虚拟ip总是可以访问到其中一个存活的节点, 所以需要配置软件负载均衡, 不使用域名解析的原因是大多数操作系统和客户端会缓存域名解析的结果, 服务宕机时常常不能及时切换.
+
+这里使用 keepalived + HAProxy 方案:
+```bash
+k8s-practice/hyperv-cluster/script/vm/1package-ha.sh
+```
+### 配置控制节点(master)的高可用和负载均衡
 在高可用集群中有多个控制节点(master),  需要有一个负载均衡器可以访问所有的控制节点(master), 控制节点之间会选主节点, 客户端访问kube server api时总是访问主节点。
 
 ### 配置 keepalived
