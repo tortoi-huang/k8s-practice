@@ -65,7 +65,7 @@ apt upgrade -y
 
 # 安装和更新 ubuntu 非常耗时, 建议此时备份虚拟磁盘模板
 # hyperv-cluster\script\host\0k8s-env.ps1
-# hyperv-cluster\script\host\copy-vm.ps1  -t k8s1 -d k8s_temp -m $vm_master_mem -c $vm_master_cpus
+# hyperv-cluster\script\host\copy-vm.ps1  -t k8s_temp -d k8s1 -m $vm_master_mem -c $vm_master_cpus
 
 cd ~
 git clone https://github.com/tortoi-huang/k8s-practice.git

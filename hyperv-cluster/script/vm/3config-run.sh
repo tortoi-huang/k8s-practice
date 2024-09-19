@@ -4,7 +4,7 @@
 set -e
 # set -x
 
-sudo mkdir -p /etc/containerd/certs.d/_default /etc/containerd/certs.d/docker.io /etc/containerd/certs.d/registry.k8s.io
+sudo mkdir -p /etc/containerd/certs.d/_default /etc/containerd/certs.d/docker.io /etc/containerd/certs.d/registry.k8s.io /etc/cni/net.d
 
 # journalctl -fu containerd
 # containerd 配置文件
@@ -27,64 +27,64 @@ sudo sed "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.
 #       config_path = "/etc/containerd/certs.d"
 # EOF
 
-# 默认仓库配置
-if [ "$MIRROR_DOCKER" ]; then
-sudo tee /etc/containerd/certs.d/_default/hosts.toml <<-EOF
-[host."${MIRROR_DOCKER}"]
-  capabilities = ["pull", "resolve"]
-EOF
+# # 默认仓库配置
+# if [ "$MIRROR_DOCKER" ]; then
+# sudo tee /etc/containerd/certs.d/_default/hosts.toml <<-EOF
+# [host."${MIRROR_DOCKER}"]
+#   capabilities = ["pull", "resolve"]
+# EOF
 
-# docker 仓库配置
-sudo tee /etc/containerd/certs.d/docker.io/hosts.toml <<-EOF
-server = "https://docker.io"
+# # docker 仓库配置
+# sudo tee /etc/containerd/certs.d/docker.io/hosts.toml <<-EOF
+# server = "https://docker.io"
 
-[host."${MIRROR_DOCKER}"]
-  capabilities = ["pull", "resolve"]
-EOF
-fi
+# [host."${MIRROR_DOCKER}"]
+#   capabilities = ["pull", "resolve"]
+# EOF
+# fi
 
-# k8s 仓库配置
-if [ "$MIRROR_K8S" ]; then
-sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<-EOF
-server = "https://registry.k8s.io"
+# # k8s 仓库配置
+# if [ "$MIRROR_K8S" ]; then
+# sudo tee /etc/containerd/certs.d/registry.k8s.io/hosts.toml <<-EOF
+# server = "https://registry.k8s.io"
 
-[host."${MIRROR_K8S}"]
-  capabilities = ["pull", "resolve"]
-EOF
-fi
+# [host."${MIRROR_K8S}"]
+#   capabilities = ["pull", "resolve"]
+# EOF
+# fi
 
-# 配置 containerd cni插件
-tee /etc/cni/net.d/10-containerd-net.conflist <<-EOF
-{
-  "cniVersion": "1.0.0",
-  "name": "containerd-net",
-  "plugins": [
-    {
-      "type": "bridge",
-      "bridge": "cni0",
-      "isGateway": true,
-      "ipMasq": true,
-      "promiscMode": true,
-      "ipam": {
-        "type": "host-local",
-        "ranges": [
-          [{
-            "subnet": "10.88.0.0/16"
-          }],
-          [{
-            "subnet": "2001:4860:4860::/64"
-          }]
-        ],
-        "routes": [
-          { "dst": "0.0.0.0/0" },
-          { "dst": "::/0" }
-        ]
-      }
-    },
-    {
-      "type": "portmap",
-      "capabilities": {"portMappings": true}
-    }
-  ]
-}
-EOF
+# # 配置 containerd cni插件
+# tee /etc/cni/net.d/10-containerd-net.conflist <<-EOF
+# {
+#   "cniVersion": "1.0.0",
+#   "name": "containerd-net",
+#   "plugins": [
+#     {
+#       "type": "bridge",
+#       "bridge": "cni0",
+#       "isGateway": true,
+#       "ipMasq": true,
+#       "promiscMode": true,
+#       "ipam": {
+#         "type": "host-local",
+#         "ranges": [
+#           [{
+#             "subnet": "10.88.0.0/16"
+#           }],
+#           [{
+#             "subnet": "2001:4860:4860::/64"
+#           }]
+#         ],
+#         "routes": [
+#           { "dst": "0.0.0.0/0" },
+#           { "dst": "::/0" }
+#         ]
+#       }
+#     },
+#     {
+#       "type": "portmap",
+#       "capabilities": {"portMappings": true}
+#     }
+#   ]
+# }
+# EOF
