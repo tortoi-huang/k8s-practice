@@ -3,7 +3,14 @@
 # 遇到错误时停止执行后续语句
 set -e
 
-source /etc/profile
+if [ -n "$NODE_IP" ]; then 
+    echo "'NODE_IP' not set"
+    exit 0
+fi
+
+script_dir="$(dirname "$0")"
+source $script_dir/env.profile
+
 sudo tee -a /etc/profile <<-EOF
 export NODE_IP=${CONTROL_NODE4}
 export NODE_NAME=k8s4
