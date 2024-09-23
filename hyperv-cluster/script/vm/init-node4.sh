@@ -25,5 +25,5 @@ fi
 echo ${NODE_NAME} | sudo tee /etc/hostname
 sudo hostname -F /etc/hostname
 
-sudo sed "s/192.168.98.200\/24/${NODE_IP}\/24/g" /etc/netplan/00-installer-config.yaml -i
+sudo sed "s/192.168.98.200\/24/${NODE_IP}\/24/g" /etc/netplan/50-cloud-init.yaml >> /etc/netplan/50-cloud-init.yaml
 sudo netplan apply 
