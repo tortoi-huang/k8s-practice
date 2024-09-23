@@ -3,10 +3,13 @@
 # 遇到错误时停止执行后续语句
 set -e
 
+script_dir="$(dirname "$0")"
+source $script_dir/env.profile
 if [ ! -n "$LOADBALANCE_VIP" ]; then 
     echo "'$script_dir/env.profile' not load"
     exit 1
 fi
+NODE_IP=$(ip addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1| head -n 1)
 
 # 健康检查服务
 sudo tee /etc/keepalived/check_apiserver.sh <<-EOF
@@ -27,6 +30,7 @@ control_nodes="${CONTROL_NODE1} ${CONTROL_NODE2} ${CONTROL_NODE3}"
 unicast_peers="${control_nodes/$NODE_IP/}"
 unicast_1=$(awk '{print $1}' <<< $unicast_peers)
 unicast_2=$(awk '{print $2}' <<< $unicast_peers)
+subnet=$(ip -o -f inet addr show|grep ${NODE_IP} | awk -F "[ /]+" '{print $5}')
 
 if [ "$CONTROL_NODE1" != "$NODE_IP" ]; then
 	v_state="BACKUP"
@@ -58,13 +62,13 @@ vrrp_instance VI_1 {
         auth_type PASS
         auth_pass 42
     }
-    unicast_src_ip ${NODE_IP}/24
+    unicast_src_ip ${NODE_IP}/${subnet}
     unicast_peer {
-        ${unicast_1}/24
-        ${unicast_2}/24
+        ${unicast_1}/${subnet}
+        ${unicast_2}/${subnet}
     }
     virtual_ipaddress {
-        ${LOADBALANCE_VIP}/24
+        ${LOADBALANCE_VIP}/${subnet}
     }
     track_script {
         check_apiserver
