@@ -46,3 +46,11 @@ mw/doris/doris
 hyperv-cluster/temp.ps1
 
 tool/vagrant/.vagrant
+
+tool/ingress/*.tgz
+tool/ingress/template.yaml
+tool/ingress/ingress-nginx
+
+practice/jenkins/jenkins
+practice/jenkins/*.tgz
+practice/jenkins/template.yaml

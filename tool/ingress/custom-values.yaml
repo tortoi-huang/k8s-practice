@@ -1,0 +1,9 @@
+controller:
+  # 默认是 Deployment
+  kind: DaemonSet
+  hostPort:
+    enabled: true
+  service:
+    external: 
+      enabled: false
+  # watchIngressWithoutClass: true

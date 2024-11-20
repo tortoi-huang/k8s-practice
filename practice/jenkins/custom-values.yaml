@@ -1,0 +1,67 @@
+
+controller:
+
+  # When enabling LDAP or another non-Jenkins identity source, the built-in admin account will no longer exist.
+  # If you disable the non-Jenkins identity store and instead use the Jenkins internal one,
+  # you should revert controller.admin.username to your preferred admin user:
+  admin:
+
+    # -- Admin username created as a secret if `controller.admin.createSecret` is true
+    username: "admin"
+    # -- Admin password created as a secret if `controller.admin.createSecret` is true
+    # @default -- <random password>
+    password: "Jk1234"
+
+  # -- Set Jenkins URL if you are not using the ingress definitions provided by the chart
+  jenkinsUrl:
+  servicePort: 8080
+  # -- k8s target port
+  targetPort: 8080
+
+  # - name: BuildInfoProxy
+  #   port: 9000
+  #   targetPort: 9010 (Optional: Use to explicitly set targetPort if different from port)
+
+  # Plugins will be installed during Jenkins controller start
+  # -- List of Jenkins plugins to install. If you don't want to install plugins, set it to `false`
+  installPlugins:
+    - kubernetes:4295.v7fa_01b_309c95
+    - workflow-aggregator:600.vb_57cdd26fdd7
+    - git:5.6.0
+    - configuration-as-code:1887.v9e47623cb_043
+    - sonar:2.17.3
+    - gradle:2.13.1
+
+  ingress:
+    # -- Enables ingress
+    enabled: true
+    # 需要指定 ingressClass 避免没有默认的 ingressClass 导致无法访问
+    ingressClassName: nginx
+
+    # Override for the default paths that map requests to the backend
+    # -- Override for the default Ingress paths
+    paths: []
+    # - backend:
+    #     serviceName: ssl-redirect
+    #     servicePort: use-annotation
+    # - backend:
+    #     serviceName: >-
+    #       {{ template "jenkins.fullname" . }}
+    #     # Don't use string here, use only integer value!
+    #     servicePort: 8080
+
+    # Set this path to jenkinsUriPrefix above or use annotations to rewrite path
+    # -- Ingress path
+    path: /
+    # 使用子域名访问
+    hostName: jenkins.lo-k8s
+
+# agent 是Jenkins 在 k8s 上创建 pipeline 的代理组件
+agent:
+  # -- Enable Kubernetes plugin jnlp-agent podTemplate
+  enabled: true
+
+persistence:
+  # -- The size of the PVC
+  size: "2Gi"
+  storageClass: microk8s-hostpath
