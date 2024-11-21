@@ -53,7 +53,7 @@ controller:
     # Set this path to jenkinsUriPrefix above or use annotations to rewrite path
     # -- Ingress path
     path: /
-    # 使用子域名访问
+    # 使用子域名访问, 要设置完整域名，否则有些 ingress 的实现可能无法访问，如 nginx ingress
     hostName: jenkins.lo-k8s
 
 # agent 是Jenkins 在 k8s 上创建 pipeline 的代理组件

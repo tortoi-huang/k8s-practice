@@ -49,8 +49,10 @@ tool/vagrant/.vagrant
 
 tool/ingress/*.tgz
 tool/ingress/template.yaml
-tool/ingress/ingress-nginx
+tool/ingress/ingress-nginx/
 
-practice/jenkins/jenkins
+practice/jenkins/jenkins/
+practice/jenkins/sonarqube/
+practice/jenkins/postgresql/
 practice/jenkins/*.tgz
-practice/jenkins/template.yaml
+practice/jenkins/*template.yaml
