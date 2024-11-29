@@ -53,6 +53,8 @@ tool/ingress/ingress-nginx/
 
 practice/jenkins/jenkins/
 practice/jenkins/sonarqube/
+practice/jenkins/bitbucket/
+practice/jenkins/gitlab/
 practice/jenkins/postgresql/
 practice/jenkins/*.tgz
 practice/jenkins/*template.yaml

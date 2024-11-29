@@ -36,6 +36,16 @@ global:
 ## @section PostgreSQL Primary parameters
 ##
 primary:
+  # 配置主机无需密码登录 https://www.postgresql.org/docs/current/auth-pg-hba-conf.html
+  pgHbaConfiguration: |-
+    local all all trust
+    host all all localhost trust
+    # 允许此ip段所有用户所有数据库使用sha-256密码签名登录
+    host all all 10.1.0.0/16 scram-sha-256
+    # 允许此ip段所有用户所有数据库使用md5密码签名登录
+    host all all 10.1.0.0/16 md5
+    # 允许此ip段所有用户所有数据库使用明文密码登录
+    host all all 10.1.0.0/16 password
   ## PostgreSQL Primary persistence configuration
   ##
   persistence:
