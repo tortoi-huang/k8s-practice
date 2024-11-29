@@ -81,7 +81,7 @@ helm install --timeout 10m -f sonarqube-values.yaml sonarqube ./sonarqube-10.7.0
 # helm upgrade --timeout 10m -f sonarqube-values.yaml sonarqube ./sonarqube-10.7.0+3598.tgz
 ```
 ### 配置 SonarQube
-+ 安装好后首次使用使用admin登录要求更改密码，并将密码更改为: Sonarq@12345
++ 安装好后首次使用使用 admin 登录要求更改密码，并将密码更改为: Sonarq@12345
 + 登录后进入 administration/marketplace 安装插件，因为大部分插件都需要从 github 下载, 所以可能安装失败。可以先下载到指定目录 /opt/sonarqube/extensions/plugins/ 。 如果使用 microk8s-hostpath 存储， 可以通过 kubectl get pv pvc-xxxx -o yaml 查看本地挂载的目录, 往里面复制文件后重启即可. 下面直接进入容器内部下载后重启
 ```sh
 # 进入容器

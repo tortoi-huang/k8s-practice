@@ -3,6 +3,11 @@ controller:
   kind: DaemonSet
   hostPort:
     enabled: true
+  # 设为默认 IngressClass 使用anntation 方式是官网提供的, watchIngressWithoutClass 是 nginx 独家提供的
+  # watchIngressWithoutClass: true
+  ingressClassResource: 
+    annotations:
+      ingressclass.kubernetes.io/is-default-class: "true"
   service:
     external: 
       enabled: false

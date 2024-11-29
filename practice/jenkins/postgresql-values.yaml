@@ -23,11 +23,12 @@ global:
     auth:
       # 会有一个默认的 postgres 用户， 这时它的密码
       postgresPassword: "Pg1234"
-      # 额外添加一个自定义的用户
-      username: "sonarq"
-      password: "Sq1234"
-      # 创建一个自定义数据库
-      database: "sonar_db"
+      # 这里只能创建一个用户和数据库， 多个需要使用init script
+      # # 额外添加一个自定义的用户
+      # username: "sonarq"
+      # password: "Sq1234"
+      # # 创建一个自定义数据库
+      # database: "sonar_db"
 
 ## @param architecture PostgreSQL architecture (`standalone` or `replication`)
 ##
@@ -46,6 +47,28 @@ primary:
     host all all 10.1.0.0/16 md5
     # 允许此ip段所有用户所有数据库使用明文密码登录
     host all all 10.1.0.0/16 password
+  initdb:
+    scripts:
+      init_sonarqube_script.sh: |
+        #!/bin/sh
+        echo "Do init sonarqube script."
+        psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" <<-EOSQL
+        CREATE USER sonarq with password 'Sq1234';
+        CREATE DATABASE sonar_db;
+        GRANT ALL PRIVILEGES ON DATABASE sonar_db TO sonarq;
+        \c sonar_db
+        GRANT ALL PRIVILEGES ON SCHEMA public TO sonarq;
+        EOSQL
+      init_gitlab_script.sh: |
+        #!/bin/sh
+        echo "Do init gitlab script."
+        psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" <<-EOSQL
+        CREATE USER gitlab with password 'Gl1234';
+        CREATE DATABASE gitlab_db;
+        GRANT ALL PRIVILEGES ON DATABASE gitlab_db TO gitlab;
+        \c gitlab_db
+        GRANT ALL PRIVILEGES ON SCHEMA public TO gitlab;
+        EOSQL
   ## PostgreSQL Primary persistence configuration
   ##
   persistence:

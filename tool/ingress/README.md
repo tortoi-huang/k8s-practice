@@ -3,8 +3,11 @@
 
 这里选择 daemonset 方式安装， 并开启 hostport 来接收外部流量, 
 ```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm pull --version 4.11.3 ingress-nginx/ingress-nginx
 helm template -f custom-values.yaml ingress ./ingress-nginx-4.11.3.tgz > template.yaml
+# ctr i pull --hosts-dir "/var/snap/microk8s/current/args/certs.d" registry.k8s.io/ingress-nginx/controller:v1.11.3
+# ctr i pull --hosts-dir "/var/snap/microk8s/current/args/certs.d" registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4
 helm install -f custom-values.yaml ingress ./ingress-nginx-4.11.3.tgz
 ```
 
