@@ -2,6 +2,11 @@
 git + jenkins + sonar,
 其中 git 使用 bitbucket 云服务替代，这里不做安装
 
+## 安装镜像仓库
+这里直接使用 microk8s 的 registry, 启用后会在集群内部访问地址为 registry.container-registry; 在k8s node 节点访问地址为 localhost:32000
+```bash
+sudo microk8s enable registry
+```
 
 ## 安装 postgresql
 sonarqube 依赖 postgresql
@@ -120,13 +125,33 @@ helm template -f jenkins-values.yaml jenkins ./jenkins-5.7.16.tgz > jenkins-temp
 # ctr i pull --hosts-dir "/var/snap/microk8s/current/args/certs.d" docker.io/bats/bats:1.11.0
 # 安装 jenkins
 helm install -f jenkins-values.yaml jenkins ./jenkins-5.7.16.tgz
-# helm update -f jenkins-values.yaml jenkins ./jenkins-5.7.16.tgz
+# helm upgrade -f jenkins-values.yaml jenkins ./jenkins-5.7.16.tgz
 
 # kubectl run -it curl --image=docker.io/curlimages/curl:8.5.0 --rm -- sh
 ```
 ### 配置 jenkins 
 ```bash
+# 配置流水线
 ctr i pull --hosts-dir "/var/snap/microk8s/current/args/certs.d" docker.io/library/gradle:8.11.1-jdk17
+ctr i pull --hosts-dir "/var/snap/microk8s/current/args/certs.d" docker.io/moby/buildkit:master-rootless
+ctr i pull --hosts-dir "/var/snap/microk8s/current/args/certs.d" docker.io/bitnami/kubectl:latest
+
+# 配置 buildkit 镜像仓库等信息
+kubectl apply -f config.yaml
 ```
 
-+ 在 Dashboard/Manage Jenkins/Credentials/Stores scoped to Jenkins/下添加 <a id="bitbucket_secret">bitbutcket密钥</a> 和 <a id="sonar_secret">sonarqube密钥</a> 
++ 在 Dashboard/Manage Jenkins/Credentials/System/Global credentials (unrestricted)下添加 <a id="bitbucket_secret">bitbutcket密钥</a> 格式为 Username with password
++ 在 Dashboard/Manage Jenkins/Credentials/System/Global credentials (unrestricted)下添加 <a id="sonar_secret">sonarqube密钥</a> 
+
+### 问题
+1. jenkins 没法进入容器，提示 running Jenkins temporarily with -Dorg.jenkinsci.plugins.durabletask.BourneShellScript.LAUNCH_DIAGNOSTICS=true might make the problem clearer， 在环境变量 JAVA_OPTS 添加 -Dcasc.reload.token=$(POD_NAME) -Dorg.jenkinsci.plugins.durabletask.BourneShellScript.LAUNCH_DIAGNOSTICS=true 查看更详细日志
+2. 有些容器执行命令提示权限不足， pod 的spec 下增加如下权限使得所有容器都用同一用户解决：
+```yaml
+kind: Pod
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+```
+3. buildkit 无法拉取镜像基础镜像，通过 config.yaml 中的的configmap 挂载到用户目录 /home/user/.config/buildkit/解决。 
+因为不同镜像在构建时(dockerfile 的user指令) 定义了不同的用户名, 所以他们的 home 目录path是不同的, 如果在 pod.spec指定了 runAsUser 和 runAsGroup 则所有容器的用户不管是什么用户名，他们的id都是这里指定的，他们共享相同的 home 目录权限，避免一个容器创建的文件另外一个容器没有权限读写.

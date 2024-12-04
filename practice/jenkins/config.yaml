@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: buildkitd
+data:
+  buildkitd.toml: |-
+    debug = true
+    [registry."docker.io"]
+      mirrors = ["dr.tortoi.top", "registry.tortoi.top"]
+    [registry."registry.k8s.io"]
+      mirrors = ["k8sr.tortoi.top", "k8s.tortoi.top"]
+    [registry."registry.container-registry:5000"]
+      http = true
+      insecure = true
