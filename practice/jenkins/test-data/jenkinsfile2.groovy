@@ -104,7 +104,7 @@ spec:
             stage('deploy2k8s') {
             sh '''
                 echo 'kubectl deploy start'
-                kubectl run -d spring-test --image=localhost:32000/${DOCKER_IMAGE}:${APP_VERSION}
+                kubectl run spring-test --image=localhost:32000/${DOCKER_IMAGE}:${APP_VERSION}
                 echo '------------------------------------------------------------------------ kubectl deploy end'
             '''
             }

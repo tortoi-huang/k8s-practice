@@ -26,7 +26,8 @@ helm install -f postgresql-values.yaml postgresql ./postgresql-16.2.1.tgz
 ### 配置 bitbucket
 bitbucket 没有开源版本，这里使用 bitbucket cloud
 + 新建上传一个 Java 项目
-+ [创建app访问密码](#bitbucket_secret) 登录 bitbucket ， 进入菜单: Settings/Personal Bitbucket settings/, 在左侧菜单 Account Setting 配置 username，在App passwords 设置应用密码，这个用户名和密码后面提供给 sonarqube 和 jenkins 拉取代码
++ [创建app password](#bitbucket_secret) 登录 bitbucket ， 进入菜单: Settings/Personal Bitbucket settings/, 在左侧菜单 Account Setting 配置 username, 在App passwords 设置应用密码，这个用户名和密码后面提供给 sonarqube 和 jenkins 拉取代码， 拉取形式如 https://${username}:${password}@url
++ [创建access token](#bitbucket_token) 登录 bitbucket ， 进入需要访问的 repository, 在左侧菜单 Repository settings > Access tokens 点击 Create Repository Access Token 创建一个token 可以使用如 https://x-token-auth:${token}@url 方式访问
 
 ### gitlab
 TODO 这枚没有安装成功， 原因是gitlab chart 依赖太复杂, 短期没有理清
@@ -140,7 +141,8 @@ ctr i pull --hosts-dir "/var/snap/microk8s/current/args/certs.d" docker.io/bitna
 kubectl apply -f config.yaml
 ```
 
-+ 在 Dashboard/Manage Jenkins/Credentials/System/Global credentials (unrestricted)下添加 <a id="bitbucket_secret">bitbutcket密钥</a> 格式为 Username with password
++ 在 Dashboard/Manage Jenkins/Credentials/System/Global credentials (unrestricted)下添加 <a id="bitbucket_secret">bitbutcket密码</a> 格式为 Username with password id为 bk_app
++ 在 Dashboard/Manage Jenkins/Credentials/System/Global credentials (unrestricted)下添加 <a id="bitbucket_token">bitbutcket token</a> 格式为 Secret text id为 bb_token 
 + 在 Dashboard/Manage Jenkins/Credentials/System/Global credentials (unrestricted)下添加 <a id="sonar_secret">sonarqube密钥</a> 
 
 ### 问题
