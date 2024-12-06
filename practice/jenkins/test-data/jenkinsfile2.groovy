@@ -51,7 +51,7 @@ spec:
         GRADLE_OPTS = '-Dorg.gradle.daemon=false'
         APP_VERSION = "0.0.3"
     }*/
-    withEnv(["APP_VERSION=0.0.5", "DOCKER_IMAGE=huang/spring-test"]) {
+    withEnv(["APP_VERSION=0.0.10", "DOCKER_IMAGE=huang/spring-test"]) {
       stage('checkout') {
         // 如果需要在shell中引用密码则需要 withCredentials 方法
         //withCredentials([string(credentialsId: 'bb_token', variable: 'bb_token')]) {
@@ -75,9 +75,18 @@ spec:
         container('gradle') {
             stage('Build_project') {
             sh '''
-                echo 'gradle Build start'
-                gradle clean test bootJar -PprojectVersion="${APP_VERSION}" --no-daemon
-                echo '------------------------------------------------------------------------ gradle Build end'
+              echo 'gradle Build start'
+              echo -e '~ is:' ~ 
+              echo -e "\$HOME is: $HOME"
+              whoami
+              echo -e "\$USER is: $USER"
+              id
+              cat /etc/passwd|grep 1000
+              ls -la /home/jenkins/agent/workspace/hello-k8s/
+              ls -la /home/jenkins/agent/
+              ls -la /home/jenkins/
+              gradle clean test bootJar -PprojectVersion="${APP_VERSION}" --no-daemon
+              echo '------------------------------------------------------------------------ gradle Build end'
             '''
             }
         }
@@ -88,6 +97,17 @@ spec:
           stage('package_image') {
             sh '''
               echo 'docker build start'
+              echo -e '~ is:' ~ 
+              echo -e "\$HOME is: $HOME"
+              whoami
+              echo -e "\$USER is: $USER"
+              id
+              cat /etc/passwd|grep 1000
+              touch ~/test1 /home/jenkins/test2
+              ls -la ~/
+              ls -la /home/jenkins/agent/workspace/hello-k8s/
+              ls -la /home/jenkins/agent/
+              ls -la /home/jenkins/
               cat ~/.config/buildkit/buildkitd.toml
               # docker build --build-arg BUILD_PROJECT_NAME= --build-arg JAR_FILE_NAME=stest-${APP_VERSION} -t ${DOCKER_IMAGE}:${APP_VERSION} -f ./Dockerfile . 
               # /kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --cache=true --destination=registry.container-registry:5000/${DOCKER_IMAGE}:${APP_VERSION}
@@ -103,9 +123,20 @@ spec:
         container('kubectl') {
             stage('deploy2k8s') {
             sh '''
-                echo 'kubectl deploy start'
-                kubectl run spring-test --image=localhost:32000/${DOCKER_IMAGE}:${APP_VERSION}
-                echo '------------------------------------------------------------------------ kubectl deploy end'
+              echo 'kubectl deploy start'
+              echo -e '~ is:' ~ 
+              echo -e "\$HOME is: $HOME"
+              echo $(whoami)
+              echo -e "\$USER is: $USER"
+              echo $(id)
+              echo $(cat /etc/passwd|grep 1001)
+              touch ~/test1 /home/jenkins/test2
+              ls -la ~/
+              ls -la /home/jenkins/agent/workspace/hello-k8s/
+              ls -la /home/jenkins/agent/
+              ls -la /home/jenkins/
+              kubectl run spring-test --image=localhost:32000/${DOCKER_IMAGE}:${APP_VERSION}
+              echo '------------------------------------------------------------------------ kubectl deploy end'
             '''
             }
         }
