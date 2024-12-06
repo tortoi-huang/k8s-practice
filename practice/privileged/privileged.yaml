@@ -1,0 +1,27 @@
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: privileged-pod
+spec:
+  containers:
+    - name: privileged-container
+      image: busybox
+      # image: nicolaka/netshoot # 网络调试容器
+      args: 
+        - /bin/sh
+        - -c
+        - sleep 999d
+      securityContext:
+        privileged: true
+      ports:
+        - containerPort: 9000
+  # securityContext:
+  #   privileged: true
+  restartPolicy: Never
+  # 使用宿主机 ipc 命名空间
+  hostIPC: true 
+  # 使用宿主机 网络命名空间, 这里可以监听宿主机的网络端口
+  hostNetwork: true 
+  # 使用宿主机 进程空间, 可以看到宿主机的进程
+  hostPID: true 
