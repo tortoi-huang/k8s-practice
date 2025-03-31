@@ -30,7 +30,7 @@ bitbucket 没有开源版本, 这里使用 bitbucket cloud
 + [创建 access token](#bitbucket_token) 登录 bitbucket , 进入需要访问的 repository, 在左侧菜单 Repository settings > Access tokens 点击 Create Repository Access Token 创建一个 token 可以使用如 https://x-token-auth:${token}@url 方式访问
 
 ### gitlab
-TODO 这枚没有安装成功, 原因是 gitlab chart 依赖太复杂, 短期没有理清
+TODO 这枚没有安装成功, 原因是 gitlab chart 依赖太复杂, 短期没有理清. 社区版(CE)默认不支持分布式高可用, gitlab支持使用minio来实现存储的分布式高可用。
 ```bash
 helm repo add atlassian-data-center https://atlassian.github.io/data-center-helm-charts
 
@@ -43,7 +43,7 @@ helm install -f postgresql-values.yaml postgresql ./postgresql-16.2.1.tgz
 
 ```
 ### bitbucket
-TODO 这枚没有安装成功, 原因是没有开源或者免费版本 chart 只有使用版本
+TODO 这里没有安装成功, 原因是没有开源或者免费版本, helm chart 只有试用版本
 ```bash
 helm repo add atlassian-data-center https://atlassian.github.io/data-center-helm-charts
 
